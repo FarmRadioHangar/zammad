@@ -58,7 +58,6 @@
             <% for attachment in @attachments: %>
               <% if attachment.is_audio: %>
                 <script>
-                  console.log('wesh bro');
                   var wavesurfer = WaveSurfer.create({
                     container: '#wave-<%= attachment.id %>',
                     waveColor: 'violet',

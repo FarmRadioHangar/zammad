@@ -143,6 +143,11 @@ class ArticleViewItem extends App.ObserverController
       attachments = for attachment in attachments
         console.log attachment.preferences['Content-Type']
         if attachment.preferences['Content-Type'] == 'audio/mp3'
+          #wavesurfer = WaveSurfer.create
+          #  container: "#wave-#{attachment.id}"
+          #  waveColor: 'violet'
+          #  progressColor: 'purple'
+
           attachment.is_audio = true
         else
           attachment.is_audio = false

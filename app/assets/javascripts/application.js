@@ -46,6 +46,8 @@
 
 //= require ./app/index.coffee
 
+//= require ./app/lib/wavesurfer.min.js
+
 // IE8 workaround for missing console.log
 if (!window.console) {
   window.console = {}

@@ -57,12 +57,20 @@
             <div class="attachments-title"><%- @attachments.length %> <%- @T('Attached Files') %></div>
             <% for attachment in @attachments: %>
               <% if attachment.is_audio: %>
-                <audio controls="controls">
-                  Your browser does not support the <code>audio</code> element.
-                  <source
-                    src="<%= App.Config.get('api_path') %>/ticket_attachment/<%= @article.ticket_id %>/<%= @article.id %>/<%= attachment.id %>?disposition=attachment"
-                    type="<%= attachment.preferences['Content-Type'] %>">
-                </audio>
+                <script>
+                  console.log('wesh bro');
+                  var wavesurfer = WaveSurfer.create({
+                    container: '#wave-<%= attachment.id %>',
+                    waveColor: 'violet',
+                    progressColor: 'purple'
+                  });
+
+                  wavesurfer.load('<%= App.Config.get('api_path') %>/ticket_attachment/<%= @article.ticket_id %>/<%= @article.id %>/<%= attachment.id %>?disposition=attachment');
+                </script>
+                <div id="wave-<%= attachment.id %>"></div>
+                <button class="btn btn-primary" onclick="wavesurfer.playPause()">
+                  Play
+                </button>
               <% end %>
               <% if !@C('ui_ticket_zoom_attachments_preview'): %>
                 <div class="attachment attachment--row">

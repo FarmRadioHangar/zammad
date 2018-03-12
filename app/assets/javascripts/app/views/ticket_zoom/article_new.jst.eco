@@ -55,6 +55,21 @@
         </div>
         <div class="controls"><input type="text" name="subject" value="<%= @article.subject %>" class="form-control js-mail-inputs2"></div>
       </div>
+      <div class="input form-group">
+        <p>Audio recorder yo!</p>
+        <input type="file" accept="audio/*" name="audio" capture id="recorder">
+        <audio id="player" controls></audio>
+        <script>
+          var recorder = document.getElementById('recorder');
+          var player = document.getElementById('player');
+
+          recorder.addEventListener('change', function(e) {
+            var file = e.target.files[0];
+            // Do something with the audio file.
+            player.src =  URL.createObjectURL(file);
+          });
+        </script>
+      </div>
 
       <div class="textBubble js-writeArea">
         <div class="bubble-arrow"></div>

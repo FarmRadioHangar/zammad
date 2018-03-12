@@ -93,7 +93,9 @@ class App.TicketZoomArticleNew extends App.Controller
 
   setPossibleArticleTypes: =>
     actionConfig = App.Config.get('TicketZoomArticleAction')
+    console.log actionConfig
     keys = _.keys(actionConfig).sort()
+    console.log keys
     @articleTypes = []
     for key in keys
       config = actionConfig[key]

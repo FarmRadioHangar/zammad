@@ -55,34 +55,40 @@
         </div>
         <div class="controls"><input type="text" name="subject" value="<%= @article.subject %>" class="form-control js-mail-inputs2"></div>
       </div>
-      <div class="input form-group" id="audio-recorder">
+      <div class="input form-group" id="audio-recorder" style="margin-left: 60px;">
         <p>Audio recorder yo!</p>
-        <input type="file" accept="audio/*" name="audio" capture id="recorder">
+        <input type="hidden" name="audio">
         <button id="start-recording">Start recoding</button>
         <button id="stop-recording" disabled="disabled">Stop recoding</button>
+        <button id="upload">Upload</button>
         <script>
+          const uploadURL = '/<%= @uploadUrl %>';
+          const formID = '<%= @form_id %>';
           const player = document.getElementById('player');
           const audioRecorder = document.getElementById('audio-recorder');
           const startRecording = document.getElementById('start-recording');
           const stopRecording = document.getElementById('stop-recording');
+          const upload = document.getElementById('upload');
+          const attachmentsHolder = document.querySelector('.article-new .attachments');
 
           const handleStream = function(stream) {
-            let mimeType = 'audio/ogg';
+            let mimeType = 'audio/ogg;codecs=opus';
 
-            if (MediaRecorder.isTypeSupported('audio/webm'))
-              mimeType = 'audio/webm';
+            if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus'))
+              mimeType = 'audio/webm;codecs=opus';
 
             const options = {mimeType: mimeType};
             const mediaRecorder = new MediaRecorder(stream, options);
 
             let chunks = [];
+            let blob;
 
             startRecording.onclick = function() {
               chunks = [];
 
               mediaRecorder.start();
               stopRecording.removeAttribute('disabled');
-            }
+            };
 
             stopRecording.onclick = function() {
               mediaRecorder.stop();
@@ -91,12 +97,40 @@
                 audio.setAttribute('controls', '');
                 audioRecorder.appendChild(audio);
 
-                var blob = new Blob(chunks, { 'type': mimeType });
+                blob = new Blob(chunks, { 'type': mimeType });
                 chunks = [];
                 var audioURL = window.URL.createObjectURL(blob);
                 audio.src = audioURL;
+
+                // upload to ticket_attachment_upload
               }, 100);
-            }
+            };
+
+            upload.onclick = function() {
+              const form = new FormData();
+
+              form.append('form_id', formID);
+              form.append('File', blob, `${formID}-${blob.size}.webm`);
+              console.log('ready to upload', blob, uploadURL, formID);
+
+              App.Ajax.request({
+                id:    formID,
+                type:  'POST',
+                url:   uploadURL,
+                data: form,
+                processData: false,
+                contentType: false,
+                success: (data, status, xhr) => {
+                  console.log(data, status)
+                  var e = document.createElement('div');
+                  e.innerHTML = App.view('generic/attachment_item')(data.data);
+                  attachmentsHolder.appendChild(e);
+                },
+                error: (xhr, statusText, error) => {
+                  console.log(statusText, error)
+                }
+              })
+            };
 
             mediaRecorder.ondataavailable = function(e) {
               chunks.push(e.data);

@@ -58,9 +58,9 @@
       <div class="input form-group" id="audio-recorder" style="margin-left: 60px;">
         <p>Audio recorder yo!</p>
         <input type="hidden" name="audio">
-        <button id="start-recording">Start recoding</button>
-        <button id="stop-recording" disabled="disabled">Stop recoding</button>
-        <button id="upload">Upload</button>
+        <button id="start-recording">Start recording</button>
+        <button id="stop-recording" class="hide">Stop recording</button>
+        <button id="upload" class="hide">Save</button>
         <script>
           const uploadURL = '/<%= @uploadUrl %>';
           const formID = '<%= @form_id %>';
@@ -87,7 +87,10 @@
               chunks = [];
 
               mediaRecorder.start();
-              stopRecording.removeAttribute('disabled');
+              startRecording.classList.toggle('hide');
+              stopRecording.classList.toggle('hide');
+              upload.className = 'hide';
+              audioRecorder.querySelector('audio').remove();
             };
 
             stopRecording.onclick = function() {
@@ -102,7 +105,9 @@
                 var audioURL = window.URL.createObjectURL(blob);
                 audio.src = audioURL;
 
-                // upload to ticket_attachment_upload
+                startRecording.classList.toggle('hide');
+                stopRecording.classList.toggle('hide');
+                upload.classList.toggle('hide');
               }, 100);
             };
 
@@ -111,7 +116,6 @@
 
               form.append('form_id', formID);
               form.append('File', blob, `${formID}-${blob.size}.webm`);
-              console.log('ready to upload', blob, uploadURL, formID);
 
               App.Ajax.request({
                 id:    formID,
@@ -121,10 +125,11 @@
                 processData: false,
                 contentType: false,
                 success: (data, status, xhr) => {
-                  console.log(data, status)
                   var e = document.createElement('div');
                   e.innerHTML = App.view('generic/attachment_item')(data.data);
                   attachmentsHolder.appendChild(e);
+
+                  audioRecorder.querySelector('audio').remove();
                 },
                 error: (xhr, statusText, error) => {
                   console.log(statusText, error)

@@ -71,6 +71,8 @@
           const upload = document.getElementById('upload');
           const attachmentsHolder = document.querySelector('.article-new .attachments');
 
+          let secondCount;
+
           const handleStream = function(stream) {
             let mimeType = 'audio/ogg;codecs=opus';
 
@@ -84,17 +86,32 @@
             let blob;
 
             startRecording.onclick = function() {
+              const counter = document.createElement('div');
+              counter.innerText = '0';
               chunks = [];
 
               mediaRecorder.start();
               startRecording.classList.toggle('hide');
               stopRecording.classList.toggle('hide');
               upload.className = 'hide';
-              audioRecorder.querySelector('audio').remove();
+              audioRecorder.appendChild(counter);
+
+              if (audioRecorder.querySelector('audio'))
+                audioRecorder.querySelector('audio').remove();
+
+              secondsCounter = setInterval(function() {
+                let count = parseInt(counter.innerText);
+                counter.innerText = `${count+1}`;
+              }, 1000);
             };
 
             stopRecording.onclick = function() {
               mediaRecorder.stop();
+              clearInterval(secondsCounter);
+
+              if (audioRecorder.querySelector('div'))
+                audioRecorder.querySelector('div').remove();
+
               setTimeout(function() {
                 var audio = document.createElement('audio');
                 audio.setAttribute('controls', '');

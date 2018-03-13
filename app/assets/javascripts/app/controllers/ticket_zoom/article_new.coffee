@@ -133,6 +133,7 @@ class App.TicketZoomArticleNew extends App.Controller
     ticket = App.Ticket.fullLocal(@ticket_id)
 
     @html App.view('ticket_zoom/article_new')(
+      uploadUrl:       App.Config.get('api_path') + '/ticket_attachment_upload'
       ticket:           ticket
       articleTypes:     @articleTypes
       article:          @defaults
@@ -249,10 +250,15 @@ class App.TicketZoomArticleNew extends App.Controller
         params.type_id   = type.id
         params.sender_id = sender.id
       else
+        console.log params
         sender           = App.TicketArticleSender.findByAttribute('name', 'Agent')
         type             = App.TicketArticleType.findByAttribute('name', params['type'])
         params.sender_id = sender.id
-        params.type_id   = type.id
+
+        if type
+          params.type_id   = type.id
+        else
+          params.type_id   = 11 # Web
 
     if params.internal
       params.internal = true

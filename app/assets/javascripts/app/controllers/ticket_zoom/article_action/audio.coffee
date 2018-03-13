@@ -9,7 +9,7 @@ class AudioReply
     return articleTypes if !ui.permissionCheck('ticket.agent')
     articleTypes.push {
       name:       'audio'
-      icon:       'audio'
+      icon:       'reply'
       attributes: ['audio']
       internal:   false,
       features:   ['attachment']

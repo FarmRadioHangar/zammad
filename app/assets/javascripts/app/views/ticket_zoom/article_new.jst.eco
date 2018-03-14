@@ -56,7 +56,6 @@
         <div class="controls"><input type="text" name="subject" value="<%= @article.subject %>" class="form-control js-mail-inputs2"></div>
       </div>
       <div class="input form-group" id="audio-recorder" style="margin-left: 60px;">
-        <p>Audio recorder yo!</p>
         <input type="hidden" name="audio">
         <button id="start-recording">Start recording</button>
         <button id="stop-recording" class="hide">Stop recording</button>
@@ -146,6 +145,7 @@
                   e.innerHTML = App.view('generic/attachment_item')(data.data);
                   attachmentsHolder.appendChild(e);
 
+                  upload.classList.toggle('hide');
                   audioRecorder.querySelector('audio').remove();
                 },
                 error: (xhr, statusText, error) => {

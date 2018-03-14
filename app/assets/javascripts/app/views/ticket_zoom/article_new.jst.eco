@@ -60,6 +60,7 @@
         <button id="start-recording">Start recording</button>
         <button id="stop-recording" class="hide">Stop recording</button>
         <button id="upload" class="hide">Save</button>
+        <p id="audio-saved" class="hide">Audio saved. Please make sure you've type a description of the audio in the text area below</p>
         <script>
           const uploadURL = '/<%= @uploadUrl %>';
           const formID = '<%= @form_id %>';
@@ -68,6 +69,7 @@
           const startRecording = document.getElementById('start-recording');
           const stopRecording = document.getElementById('stop-recording');
           const upload = document.getElementById('upload');
+          const audioSaved = document.getElementById('audio-saved');
           const attachmentsHolder = document.querySelector('.article-new .attachments');
 
           let secondCount;
@@ -93,6 +95,7 @@
               startRecording.classList.toggle('hide');
               stopRecording.classList.toggle('hide');
               upload.className = 'hide';
+              audioSaved.className = 'hide';
               audioRecorder.appendChild(counter);
 
               if (audioRecorder.querySelector('audio'))
@@ -146,6 +149,7 @@
                   attachmentsHolder.appendChild(e);
 
                   upload.classList.toggle('hide');
+                  audioSaved.classList.toggle('hide');
                   audioRecorder.querySelector('audio').remove();
                 },
                 error: (xhr, statusText, error) => {

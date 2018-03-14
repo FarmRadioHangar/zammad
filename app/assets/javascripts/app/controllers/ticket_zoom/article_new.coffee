@@ -93,9 +93,7 @@ class App.TicketZoomArticleNew extends App.Controller
 
   setPossibleArticleTypes: =>
     actionConfig = App.Config.get('TicketZoomArticleAction')
-    console.log actionConfig
     keys = _.keys(actionConfig).sort()
-    console.log keys
     @articleTypes = []
     for key in keys
       config = actionConfig[key]
@@ -250,7 +248,6 @@ class App.TicketZoomArticleNew extends App.Controller
         params.type_id   = type.id
         params.sender_id = sender.id
       else
-        console.log params
         sender           = App.TicketArticleSender.findByAttribute('name', 'Agent')
         type             = App.TicketArticleType.findByAttribute('name', params['type'])
         params.sender_id = sender.id
@@ -367,7 +364,6 @@ class App.TicketZoomArticleNew extends App.Controller
     @$('[name=internal]').val('')
 
   setArticleType: (type, signaturePosition = 'bottom') =>
-    console.log 'set article type'
     wasScrolledToBottom = @isScrolledToBottom()
     @type = type
     @$('[name=type]').val(type).trigger('change')

@@ -16,4 +16,4 @@ class AudioReply
     }
     articleTypes
 
-App.Config.set('100-AudioReply', AudioReply, 'TicketZoomArticleAction')
+App.Config.set('000-AudioReply', AudioReply, 'TicketZoomArticleAction')

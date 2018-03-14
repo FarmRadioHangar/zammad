@@ -341,6 +341,11 @@ class App.TicketZoomArticleNew extends App.Controller
     @setArticleType(articleTypeToSet)
     @hideSelectableArticleType()
 
+    if articleTypeToSet == 'audio'
+      @attachmentHint.text 'Record Audio or'
+    else
+      @attachmentHint.text 'Enter Answer or'
+
     $(window).off 'click.ticket-zoom-select-type'
 
   hideSelectableArticleType: =>
@@ -362,6 +367,7 @@ class App.TicketZoomArticleNew extends App.Controller
     @$('[name=internal]').val('')
 
   setArticleType: (type, signaturePosition = 'bottom') =>
+    console.log 'set article type'
     wasScrolledToBottom = @isScrolledToBottom()
     @type = type
     @$('[name=type]').val(type).trigger('change')

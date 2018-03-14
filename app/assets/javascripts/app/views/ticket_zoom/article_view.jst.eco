@@ -58,17 +58,16 @@
             <% for attachment in @attachments: %>
               <% if attachment.is_audio: %>
                 <script>
-                  console.log('wave');
-                  var wavesurfer = WaveSurfer.create({
+                  var wavesurfer<%= attachment.id %> = WaveSurfer.create({
                     container: '#wave-<%= attachment.id %>',
                     waveColor: 'violet',
                     progressColor: 'purple'
                   });
 
-                  wavesurfer.load('<%= App.Config.get('api_path') %>/ticket_attachment/<%= @article.ticket_id %>/<%= @article.id %>/<%= attachment.id %>?disposition=attachment');
+                  wavesurfer<%= attachment.id %>.load('<%= App.Config.get('api_path') %>/ticket_attachment/<%= @article.ticket_id %>/<%= @article.id %>/<%= attachment.id %>?disposition=attachment');
                 </script>
                 <div id="wave-<%= attachment.id %>"></div>
-                <button class="btn btn-primary" onclick="wavesurfer.playPause()">
+                <button class="btn btn-primary" onclick="wavesurfer<%= attachment.id %>.playPause()">
                   Play
                 </button>
               <% end %>

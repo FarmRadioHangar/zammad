@@ -9,7 +9,6 @@ class App.TicketZoomArticleView extends App.Controller
     @run()
 
   run: =>
-    console.log "article view"
     all = []
     for ticket_article_id, index in @ticket_article_ids
       controllerKey = ticket_article_id.toString()
@@ -141,7 +140,6 @@ class ArticleViewItem extends App.ObserverController
 
       # Set audio properties
       attachments = for attachment in attachments
-        console.log attachment.preferences['Content-Type']
         formats = ['audio/mp3', 'audio/mpeg']
         if formats.indexOf attachment.preferences['Content-Type'] != -1
           attachment.is_audio = true
@@ -149,7 +147,6 @@ class ArticleViewItem extends App.ObserverController
           attachment.is_audio = false
         attachment
 
-      console.log attachments
     # prepare html body
     if article.content_type is 'text/html'
       body = article.body

@@ -290,3 +290,10 @@ var config = {
 
 firebase.initializeApp(config);
 console.log('firebase', firebase);
+
+firebase.database()
+  .ref('/')
+  .once('value')
+  .then(snap => {
+    console.log('shit is working yo!', snap.val());
+  });

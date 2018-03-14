@@ -47,6 +47,7 @@
 //= require ./app/index.coffee
 
 //= require ./app/lib/wavesurfer.min.js
+//= require ./app/lib/firebase.js
 
 // IE8 workaround for missing console.log
 if (!window.console) {
@@ -277,3 +278,15 @@ jQuery.fn.extend( {
 jQuery(function(){
   new App.Run();
 });
+
+var config = {
+  apiKey: "AIzaSyDgptJnGNXKDfnsFgvWbN9Qcx_GqV-p-Gk",
+  authDomain: "ulizaanswers.firebaseapp.com",
+  databaseURL: "https://ulizaanswers.firebaseio.com",
+  projectId: "ulizaanswers",
+  storageBucket: "ulizaanswers.appspot.com",
+  messagingSenderId: "929787376964"
+};
+
+firebase.initializeApp(config);
+console.log('firebase', firebase);

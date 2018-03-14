@@ -258,7 +258,7 @@ class App.TicketZoomArticleNew extends App.Controller
         if type
           params.type_id   = type.id
         else
-          params.type_id   = 11 # Web
+          params.type_id   = 10 # Note
 
     if params.internal
       params.internal = true

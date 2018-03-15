@@ -13,9 +13,136 @@
   <%= @object.number %>.
 
   <hr>
+  <!-- BEGIN Vue.js -->
+  <div id="search-tickets">
+    <input
+      type="search"
+      placeholder="Search tickets..."
+      v-on:keyup="search" />
+
+    <table class="table table--placeholder" v-if="state === 'not-found'">
+      <thead><tr><th>No Entries</th></tr></thead>
+    </table>
+
+    <table class="table table-hover" v-if="results.length > 0">
+      <thead>
+        <tr>
+          <th style="width: 40px" class="table-radio"></th>
+          <th class="js-tableHead" style="width:28px" data-column-key="icon">
+            <div class="table-column-head js-sort">
+              <div class="table-column-title"></div>
+              <div class="table-column-sortIcon"></div>
+            </div>
+          </th>
+          <th class="js-tableHead" style="width:112px" data-column-key="number">
+            <div class="table-column-head js-sort">
+              <div class="table-column-title">#</div>
+              <div class="table-column-sortIcon"></div>
+            </div>
+              <div class="table-col-resize js-col-resize"></div>
+          </th>
+          <th class="js-tableHead" style="width:112px" data-column-key="title">
+            <div class="table-column-head js-sort">
+              <div class="table-column-title">Title</div>
+              <div class="table-column-sortIcon"></div>
+            </div>
+              <div class="table-col-resize js-col-resize"></div>
+          </th>
+          <th class="js-tableHead" style="width:112px" data-column-key="group_id">
+            <div class="table-column-head js-sort">
+              <div class="table-column-title">Group</div>
+              <div class="table-column-sortIcon"></div>
+            </div>
+              <div class="table-col-resize js-col-resize"></div>
+          </th>
+          <th class="js-tableHead align-right" style="width:114px" data-column-key="created_at">
+            <div class="table-column-head js-sort">
+              <div class="table-column-title">Created at</div>
+              <div class="table-column-sortIcon"></div>
+            </div>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="item" data-id="{{ticket.id}}" v-for="ticket in results">
+          <td class="table-radio">
+            <label class="radio-replacement">
+              <input type="radio" value="1" name="radio">
+              <svg class="icon icon-radio icon-unchecked">
+                <use xlink:href="assets/images/icons.svg#icon-radio"></use>
+              </svg>
+              <svg class="icon icon-radio-checked icon-checked">
+                <use xlink:href="assets/images/icons.svg#icon-radio-checked"></use>
+              </svg>
+            </label>
+          </td>
+          <td title="new">
+            <svg class="icon icon-task-state open">
+              <use xlink:href="assets/images/icons.svg#icon-task-state"></use>
+            </svg>
+          </td>
+          <td title="{{ticket.title}}">
+            <a href="#ticket/zoom/{{ticket.id}}">{{ticket.number}}</a>
+          </td>
+          <td title="{{ticket.title}}">
+            <a href="#ticket/zoom/{{ticket.id}}">{{ticket.title}}</a>
+          </td>
+          <td>{{ticket.group}}</td>
+          <td style="text-align:right">
+            <time>{{ticket.created_at | formatDate}}</time>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <!-- END Vue.js -->
+  <hr>
   <h4><%- @T('Recent Customer Tickets') %></h4>
   <div id="ticket-merge-customer-tickets"></div>
   <hr>
   <h4><%- @T('Recent viewed Tickets') %></h4>
   <div id="ticket-merge-recent-tickets"></div>
 </fieldset>
+<script>
+Vue.filter('formatDate', function(value) {
+  if (value) {
+    return App.PrettyDate.humanTime(value)
+  }
+});
+
+new Vue({
+  el: '#search-tickets',
+  data: {
+    results: [],
+    state: 'init'
+  },
+  methods: {
+    onResults: function(data) {
+      if (data.length > 0) {
+        this.results = data;
+        this.state = 'found';
+      } else {
+        this.results = [];
+        this.state = 'not-found';
+      }
+    },
+    search: function(e) {
+      const query = e.target.value;
+
+      if (query.length <= 2) {
+        this.results = [];
+        this.state = 'init';
+        return;
+      }
+
+      App.Ajax.request({
+        type:  'GET',
+        url:   '/api/v1/tickets/search',
+        data: { query: query, expand: true },
+        processData: true,
+        success: this.onResults
+      })
+    }
+  }
+});
+</script>

@@ -27,35 +27,35 @@
     <table class="table table-hover" v-if="results.length > 0">
       <thead>
         <tr>
-          <th style="width: 40px" class="table-radio"></th>
+          <th style="width: 28px" class="table-radio"></th>
           <th class="js-tableHead" style="width:28px" data-column-key="icon">
             <div class="table-column-head js-sort">
               <div class="table-column-title"></div>
               <div class="table-column-sortIcon"></div>
             </div>
           </th>
-          <th class="js-tableHead" style="width:112px" data-column-key="number">
+          <th class="js-tableHead" style="width: 62px" data-column-key="number">
             <div class="table-column-head js-sort">
               <div class="table-column-title">#</div>
               <div class="table-column-sortIcon"></div>
             </div>
               <div class="table-col-resize js-col-resize"></div>
           </th>
-          <th class="js-tableHead" style="width:112px" data-column-key="title">
+          <th class="js-tableHead"  data-column-key="title">
             <div class="table-column-head js-sort">
               <div class="table-column-title">Title</div>
               <div class="table-column-sortIcon"></div>
             </div>
               <div class="table-col-resize js-col-resize"></div>
           </th>
-          <th class="js-tableHead" style="width:112px" data-column-key="group_id">
+          <th class="js-tableHead" style="width: 68px;" data-column-key="group_id">
             <div class="table-column-head js-sort">
               <div class="table-column-title">Group</div>
               <div class="table-column-sortIcon"></div>
             </div>
               <div class="table-col-resize js-col-resize"></div>
           </th>
-          <th class="js-tableHead align-right" style="width:114px" data-column-key="created_at">
+          <th class="js-tableHead align-right" style="width: 102px;" data-column-key="created_at">
             <div class="table-column-head js-sort">
               <div class="table-column-title">Created at</div>
               <div class="table-column-sortIcon"></div>
@@ -81,11 +81,11 @@
               <use xlink:href="assets/images/icons.svg#icon-task-state"></use>
             </svg>
           </td>
-          <td title="{{ticket.title}}">
-            <a href="#ticket/zoom/{{ticket.id}}">{{ticket.number}}</a>
+          <td :title="ticket.title">
+            <a :href="'#ticket/zoom/' + ticket.id">{{ticket.number}}</a>
           </td>
-          <td title="{{ticket.title}}">
-            <a href="#ticket/zoom/{{ticket.id}}">{{ticket.title}}</a>
+          <td :title="ticket.title">
+            <a >{{ticket.title}}</a>
           </td>
           <td>{{ticket.group}}</td>
           <td style="text-align:right">

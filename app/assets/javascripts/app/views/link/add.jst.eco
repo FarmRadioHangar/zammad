@@ -16,7 +16,7 @@
   <!-- BEGIN Vue.js -->
   <div id="search-tickets">
     <input
-      type="search"
+      type="text"
       placeholder="Search tickets..."
       v-on:keyup="search" />
 

@@ -847,7 +847,37 @@ class App.TicketZoom extends App.Controller
         @submitPost(e, ticket)
     )
 
+  sendToFirebase: (ticket) =>
+    if ticket.state.name == 'open'
+      @ajax(
+        id: "ticket_get_#{ticket.id}"
+        type: 'GET',
+        url: "#{App.Ticket.url}/#{ticket.id}?all=true"
+        processData: true
+        success: (data) =>
+          console.log 'data', data
+
+          assignment =
+            owner:
+              id: ticket.owner_id
+              email: ticket.owner.email
+              mobile: ticket.owner.mobile
+              firstname: ticket.owner.firstname
+              lastname: ticket.owner.lastname
+            ticket:
+              id: ticket.id
+              state: ticket.state.name
+            article: data.assets.TicketArticle[data.ticket_article_ids[0]]
+
+          console.log 'assignment', assignment
+          firebase.database()
+            .ref '/pendingAssignments'
+            .push assignment
+      )
+
+
   submitPost: (e, ticket) =>
+    @sendToFirebase ticket
 
     taskAction = @$('.js-secondaryActionButtonLabel').data('type')
 

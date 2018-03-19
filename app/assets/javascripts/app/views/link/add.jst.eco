@@ -76,7 +76,7 @@
             </label>
           </td>
           <td title="new">
-            <svg class="icon icon-task-state open">
+            <svg :class="'icon icon-task-state ' + ticket.state">
               <use xlink:href="assets/images/icons.svg#icon-task-state"></use>
             </svg>
           </td>
@@ -118,6 +118,7 @@ new Vue({
   methods: {
     onResults: function(data) {
       if (data.length > 0) {
+        console.log(data);
         this.results = data;
         this.state = 'found';
       } else {

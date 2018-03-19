@@ -63,10 +63,10 @@
         </tr>
       </thead>
       <tbody>
-        <tr class="item" data-id="{{ticket.id}}" v-for="ticket in results">
+        <tr class="item" :data-id="ticket.id" v-for="ticket in results">
           <td class="table-radio">
             <label class="radio-replacement">
-              <input type="radio" value="1" name="radio">
+              <input type="radio" :value="ticket.id" name="radio">
               <svg class="icon icon-radio icon-unchecked">
                 <use xlink:href="assets/images/icons.svg#icon-radio"></use>
               </svg>
@@ -84,7 +84,7 @@
             <a :href="'#ticket/zoom/' + ticket.id">{{ticket.number}}</a>
           </td>
           <td :title="ticket.title">
-            <a >{{ticket.title}}</a>
+            <a :href="'#ticket/zoom/' + ticket.id">{{ticket.title}}</a>
           </td>
           <td>{{ticket.group}}</td>
           <td style="text-align:right">

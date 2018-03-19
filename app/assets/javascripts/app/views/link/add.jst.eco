@@ -131,6 +131,7 @@ new Vue({
       if (query.length <= 2) {
         this.results = [];
         this.state = 'init';
+
         return;
       }
 

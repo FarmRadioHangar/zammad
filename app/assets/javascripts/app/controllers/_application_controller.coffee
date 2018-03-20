@@ -361,6 +361,17 @@ class App.Controller extends Spine.Controller
         headline
       content: ->
         userId = $(@).data('id')
+        ticketId = $(@).parent().parent().data('id')
+
+        App.Ajax.request(
+          type: 'GET',
+          url:   App.Config.get('api_path') + '/tickets/' + ticketId + '?all=true'
+          success: (data) =>
+            if (data.assets.TicketArticle[data.ticket_article_ids[0]].attachments.length > 0)
+              attachment = data.assets.TicketArticle[data.ticket_article_ids[0]].attachments[0]
+              console.log 'attach', attachment
+        )
+
         user   = App.User.fullLocal(userId)
 
         # get display data

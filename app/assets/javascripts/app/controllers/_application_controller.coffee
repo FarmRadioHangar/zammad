@@ -367,9 +367,33 @@ class App.Controller extends Spine.Controller
           type: 'GET',
           url:   App.Config.get('api_path') + '/tickets/' + ticketId + '?all=true'
           success: (data) =>
-            if (data.assets.TicketArticle[data.ticket_article_ids[0]].attachments.length > 0)
-              attachment = data.assets.TicketArticle[data.ticket_article_ids[0]].attachments[0]
-              console.log 'attach', attachment
+            articleId = data.ticket_article_ids[0]
+
+            if (data.assets.TicketArticle[articleId].attachments.length > 0)
+              popoverId = $(@).attr('aria-describedby')
+              attachment = data.assets.TicketArticle[articleId].attachments[0]
+              container = document.querySelector('#' + popoverId + ' .popover-body')
+              player = document.createElement('div')
+              playBtn = document.createElement('button')
+              audioUrl = App.Config.get('api_path') + '/ticket_attachment/' + ticketId + '/' + articleId + '/' + attachment.id + '?disposition=attachment'
+
+              player.innerText = 'Some random text'
+              playBtn.value = 'Play'
+              container.appendChild(player)
+              container.appendChild(playBtn)
+
+              wavesurfer = WaveSurfer.create(
+                container: player
+                waveColor: 'violet'
+                progressColor: 'purple'
+              )
+
+              wavesurfer.load audioUrl
+
+              playBtn.onclick = () =>
+                wavesurfer.playPause()
+
+              console.log container, popoverId, audioUrl
         )
 
         user   = App.User.fullLocal(userId)

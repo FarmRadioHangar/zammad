@@ -370,17 +370,25 @@ class App.Controller extends Spine.Controller
             articleId = data.ticket_article_ids[0]
 
             if (data.assets.TicketArticle[articleId].attachments.length > 0)
-              popoverId = $(@).attr('aria-describedby')
+              existingNode = document.querySelector '.popover-player'
+
+              console.log existingNode
+              existingNode.remove() if existingNode
+
+              popoverId = $(@).attr 'aria-describedby'
               attachment = data.assets.TicketArticle[articleId].attachments[0]
               container = document.querySelector('#' + popoverId + ' .popover-body')
-              player = document.createElement('div')
-              playBtn = document.createElement('button')
+              playerContainer = document.createElement 'div'
+              player = document.createElement 'div'
+              playBtn = document.createElement 'input'
               audioUrl = App.Config.get('api_path') + '/ticket_attachment/' + ticketId + '/' + articleId + '/' + attachment.id + '?disposition=attachment'
 
-              player.innerText = 'Some random text'
+              playerContainer.className = 'popover-player'
               playBtn.value = 'Play'
-              container.appendChild(player)
-              container.appendChild(playBtn)
+              playBtn.setAttribute 'type', 'button'
+              playerContainer.appendChild player
+              playerContainer.appendChild playBtn
+              container.appendChild playerContainer if container
 
               wavesurfer = WaveSurfer.create(
                 container: player
@@ -392,8 +400,6 @@ class App.Controller extends Spine.Controller
 
               playBtn.onclick = () =>
                 wavesurfer.playPause()
-
-              console.log container, popoverId, audioUrl
         )
 
         user   = App.User.fullLocal(userId)

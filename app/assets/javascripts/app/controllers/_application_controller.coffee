@@ -372,9 +372,9 @@ class App.Controller extends Spine.Controller
             if (data.assets.TicketArticle[articleId].attachments.length > 0)
               existingNode = document.querySelector '.popover-player'
 
-              console.log existingNode
               existingNode.remove() if existingNode
 
+              isPlaying = false
               popoverId = $(@).attr 'aria-describedby'
               attachment = data.assets.TicketArticle[articleId].attachments[0]
               container = document.querySelector('#' + popoverId + ' .popover-body')
@@ -400,9 +400,14 @@ class App.Controller extends Spine.Controller
 
               playBtn.onclick = () =>
                 wavesurfer.playPause()
+                isPlaying = !isPlaying;
+
+                if isPlaying
+                  playBtn.value = 'Pause'
+                else
+                  playBtn.value = 'Play';
 
               $('#' + popoverId).on('DOMNodeRemoved', (e) =>
-                console.log(e.target, ' was Removed')
                 wavesurfer.pause()
               )
         )

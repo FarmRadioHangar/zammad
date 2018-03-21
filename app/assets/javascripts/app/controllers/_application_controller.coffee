@@ -372,7 +372,7 @@ class App.Controller extends Spine.Controller
             if (data.assets.TicketArticle[articleId].attachments.length > 0)
               existingNode = document.querySelector '.popover-player'
 
-              existingNode.remove() if existingNode
+              return false if existingNode
 
               isPlaying = false
               popoverId = $(@).attr 'aria-describedby'
@@ -382,12 +382,15 @@ class App.Controller extends Spine.Controller
               playerCounter = document.createElement 'div'
               player = document.createElement 'div'
               playBtn = document.createElement 'input'
+              loader = document.createElement 'img'
               audioUrl = App.Config.get('api_path') + '/ticket_attachment/' + ticketId + '/' + articleId + '/' + attachment.id + '?disposition=attachment'
 
+              loader.src = 'assets/images/loading.gif'
               playerContainer.className = 'popover-player'
               playerCounter.className = 'counter'
               playBtn.value = 'Play'
               playBtn.setAttribute 'type', 'button'
+              player.appendChild loader
               playerContainer.appendChild player
               playerContainer.appendChild playerCounter
               playerContainer.appendChild playBtn
@@ -400,6 +403,10 @@ class App.Controller extends Spine.Controller
               )
 
               wavesurfer.load audioUrl
+
+              wavesurfer.on 'ready', =>
+                console.log 'ready'
+                loader.remove()
 
               formatTime = (time) =>
                 return [

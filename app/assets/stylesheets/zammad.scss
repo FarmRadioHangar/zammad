@@ -9517,5 +9517,10 @@ body.fit {
 }
 
 .popover {
-  height: 240px;
+  height: 260px;
+  overflow: hidden;
+}
+
+.popover .popover-body {
+  overflow: hidden;
 }

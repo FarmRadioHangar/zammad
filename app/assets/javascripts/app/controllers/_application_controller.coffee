@@ -379,14 +379,17 @@ class App.Controller extends Spine.Controller
               attachment = data.assets.TicketArticle[articleId].attachments[0]
               container = document.querySelector('#' + popoverId + ' .popover-body')
               playerContainer = document.createElement 'div'
+              playerCounter = document.createElement 'div'
               player = document.createElement 'div'
               playBtn = document.createElement 'input'
               audioUrl = App.Config.get('api_path') + '/ticket_attachment/' + ticketId + '/' + articleId + '/' + attachment.id + '?disposition=attachment'
 
               playerContainer.className = 'popover-player'
+              playerCounter.className = 'counter'
               playBtn.value = 'Play'
               playBtn.setAttribute 'type', 'button'
               playerContainer.appendChild player
+              playerContainer.appendChild playerCounter
               playerContainer.appendChild playBtn
               container.appendChild playerContainer if container
 
@@ -398,17 +401,28 @@ class App.Controller extends Spine.Controller
 
               wavesurfer.load audioUrl
 
-              playBtn.onclick = () =>
+              formatTime = (time) =>
+                return [
+                  Math.floor((time % 3600) / 60),
+                  ('00' + Math.floor(time % 60)).slice(-2)
+                ].join ':'
+
+              # Show current time
+              wavesurfer.on('audioprocess', =>
+                $('.counter').text( formatTime(wavesurfer.getCurrentTime()) )
+              )
+
+              playBtn.onclick = =>
                 wavesurfer.playPause()
-                isPlaying = !isPlaying;
+                isPlaying = !isPlaying
 
                 if isPlaying
                   playBtn.value = 'Pause'
                 else
-                  playBtn.value = 'Play';
+                  playBtn.value = 'Play'
 
               $('#' + popoverId).on('DOMNodeRemoved', (e) =>
-                wavesurfer.pause()
+                wavesurfer.pause() if e.target.className != 'counter'
               )
         )
 

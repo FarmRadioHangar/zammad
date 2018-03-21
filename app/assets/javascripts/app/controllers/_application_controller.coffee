@@ -400,9 +400,14 @@ class App.Controller extends Spine.Controller
 
               playBtn.onclick = () =>
                 wavesurfer.playPause()
+
+              $('#' + popoverId).on('DOMNodeRemoved', (e) =>
+                console.log(e.target, ' was Removed')
+                wavesurfer.pause()
+              )
         )
 
-        user   = App.User.fullLocal(userId)
+        user = App.User.fullLocal(userId)
 
         # get display data
         userData = []

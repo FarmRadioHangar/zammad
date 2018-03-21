@@ -389,6 +389,7 @@ class App.Controller extends Spine.Controller
               playerContainer.className = 'popover-player'
               playerCounter.className = 'counter'
               playBtn.value = 'Play'
+              playBtn.className = 'hide'
               playBtn.setAttribute 'type', 'button'
               player.appendChild loader
               playerContainer.appendChild player
@@ -407,6 +408,7 @@ class App.Controller extends Spine.Controller
               wavesurfer.on 'ready', =>
                 console.log 'ready'
                 loader.remove()
+                playBtn.className = ''
 
               formatTime = (time) =>
                 return [

@@ -431,7 +431,10 @@ class App.Controller extends Spine.Controller
                   playBtn.value = 'Play'
 
               $('#' + popoverId).on('DOMNodeRemoved', (e) =>
-                wavesurfer.pause() if e.target.className != 'counter'
+                if e.target.className != 'counter'
+                  wavesurfer.pause()
+                  playBtn.value = 'Play'
+                  isPlaying = false
               )
         )
 

@@ -58,8 +58,10 @@
             <% for attachment in @attachments: %>
               <% if attachment.is_audio: %>
                 <div id="wave-<%= attachment.id %>">
+                  <div class="loader" style="width: 100%; text-align: center;" v-if="loading">
+                    <img style="margin: auto" src="assets/images/loading.gif"></img>
+                  </div>
                   <div class="player"></div>
-                  <div class="loader"></div>
                   <button @click="play">{{ isPlaying ? 'Pause' : 'Play' }}</button>
                 </div>
                 <script>
@@ -68,7 +70,8 @@
                   new Vue({
                     el: '#wave-<%= attachment.id %>',
                     data: {
-                      isPlaying: false
+                      isPlaying: false,
+                      loading: true
                     },
                     mounted: function() {
                       this.$nextTick(() => {
@@ -79,6 +82,7 @@
                         })
 
                         this.wavesurfer.load(attachmentUrl);
+                        this.wavesurfer.on('ready', () => this.loading = false)
                       })
                     },
                     methods: {

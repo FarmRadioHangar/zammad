@@ -57,26 +57,38 @@
             <div class="attachments-title"><%- @attachments.length %> <%- @T('Attached Files') %></div>
             <% for attachment in @attachments: %>
               <% if attachment.is_audio: %>
+                <div id="wave-<%= attachment.id %>">
+                  <div class="player"></div>
+                  <div class="loader"></div>
+                  <button @click="play">{{ isPlaying ? 'Pause' : 'Play' }}</button>
+                </div>
                 <script>
-                  const btn = document.getElementById('ws-btn-<%= attachment.id %>');
-                  let isPlaying = false;
+                  const attachmentUrl = "<%= App.Config.get('api_path') %>/ticket_attachment/<%= @article.ticket_id %>/<%= @article.id %>/<%= attachment.id %>?disposition=attachment";
 
-                  var wavesurfer<%= attachment.id %> = WaveSurfer.create({
-                    container: '#wave-<%= attachment.id %>',
-                    waveColor: 'violet',
-                    progressColor: 'purple'
+                  new Vue({
+                    el: '#wave-<%= attachment.id %>',
+                    data: {
+                      isPlaying: false
+                    },
+                    mounted: function() {
+                      this.$nextTick(() => {
+                        this.wavesurfer = WaveSurfer.create({
+                          container: '#wave-<%= attachment.id %> div.player',
+                          waveColor: 'violet',
+                          progressColor: 'purple'
+                        })
+
+                        this.wavesurfer.load(attachmentUrl);
+                      })
+                    },
+                    methods: {
+                      play () {
+                        this.wavesurfer.playPause();
+                        this.isPlaying = !this.isPlaying;
+                      }
+                    }
                   });
-
-                  wavesurfer<%= attachment.id %>.load('<%= App.Config.get('api_path') %>/ticket_attachment/<%= @article.ticket_id %>/<%= @article.id %>/<%= attachment.id %>?disposition=attachment');
-
-                  btn.onclick = () => {
-                    isPlaying = !isPlaying;
-                    wavesurfer<%= attachment.id %>.playPause();
-                    btn.value = isPlaying ? 'Pause' : 'Play';
-                  }
                 </script>
-                <div id="wave-<%= attachment.id %>"></div>
-                <input type="button" class="btn btn-primary" id="ws-btn-<%= attachment.id %>" value="Play" />
               <% end %>
               <% if !@C('ui_ticket_zoom_attachments_preview'): %>
                 <div class="attachment attachment--row">

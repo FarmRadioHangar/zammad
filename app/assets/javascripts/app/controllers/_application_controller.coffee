@@ -361,7 +361,84 @@ class App.Controller extends Spine.Controller
         headline
       content: ->
         userId = $(@).data('id')
-        user   = App.User.fullLocal(userId)
+        ticketId = $(@).parent().parent().data('id')
+
+        App.Ajax.request(
+          type: 'GET',
+          url:   App.Config.get('api_path') + '/tickets/' + ticketId + '?all=true'
+          success: (data) =>
+            articleId = data.ticket_article_ids[0]
+
+            if (data.assets.TicketArticle[articleId].attachments.length > 0)
+              existingNode = document.querySelector '.popover-player'
+
+              return false if existingNode
+
+              isPlaying = false
+              popoverId = $(@).attr 'aria-describedby'
+              attachment = data.assets.TicketArticle[articleId].attachments[0]
+              container = document.querySelector('#' + popoverId + ' .popover-body')
+              playerContainer = document.createElement 'div'
+              playerCounter = document.createElement 'div'
+              player = document.createElement 'div'
+              playBtn = document.createElement 'input'
+              loader = document.createElement 'img'
+              audioUrl = App.Config.get('api_path') + '/ticket_attachment/' + ticketId + '/' + articleId + '/' + attachment.id + '?disposition=attachment'
+
+              loader.src = 'assets/images/loading.gif'
+              playerContainer.className = 'popover-player'
+              playerCounter.className = 'counter'
+              playBtn.value = 'Play'
+              playBtn.className = 'hide'
+              playBtn.setAttribute 'type', 'button'
+              player.appendChild loader
+              playerContainer.appendChild player
+              playerContainer.appendChild playerCounter
+              playerContainer.appendChild playBtn
+              container.appendChild playerContainer if container
+
+              wavesurfer = WaveSurfer.create(
+                container: player
+                waveColor: 'violet'
+                progressColor: 'purple'
+              )
+
+              wavesurfer.load audioUrl
+
+              wavesurfer.on 'ready', =>
+                console.log 'ready'
+                loader.remove()
+                playBtn.className = ''
+
+              formatTime = (time) =>
+                return [
+                  Math.floor((time % 3600) / 60),
+                  ('00' + Math.floor(time % 60)).slice(-2)
+                ].join ':'
+
+              # Show current time
+              wavesurfer.on('audioprocess', =>
+                $('.counter').text( formatTime(wavesurfer.getCurrentTime()) )
+              )
+
+              playBtn.onclick = =>
+                wavesurfer.playPause()
+                isPlaying = !isPlaying
+
+                if isPlaying
+                  playBtn.value = 'Pause'
+                else
+                  playBtn.value = 'Play'
+
+              $('#' + popoverId).on('DOMNodeRemoved', (e) =>
+                if e.target.className != 'counter'
+                  wavesurfer.pause()
+                  playBtn.value = 'Play'
+                  isPlaying = false
+              )
+        )
+
+        user = App.User.fullLocal(userId)
 
         # get display data
         userData = []

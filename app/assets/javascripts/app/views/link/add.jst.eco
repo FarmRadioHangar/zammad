@@ -118,7 +118,6 @@ new Vue({
   methods: {
     onResults: function(data) {
       if (data.length > 0) {
-        console.log(data);
         this.results = data;
         this.state = 'found';
       } else {
@@ -132,6 +131,7 @@ new Vue({
       if (query.length <= 2) {
         this.results = [];
         this.state = 'init';
+
         return;
       }
 

@@ -9515,3 +9515,12 @@ body.fit {
 .flex-spacer {
   flex: 1;
 }
+
+.popover {
+  height: 400px;
+  // overflow: hidden;
+}
+
+.popover .popover-body {
+  overflow: hidden;
+}

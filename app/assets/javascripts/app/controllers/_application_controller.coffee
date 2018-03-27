@@ -341,9 +341,10 @@ class App.Controller extends Spine.Controller
       user = App.User.findNative(id)
       @navigate user.uiUrl()
     )
+
     if $('span.user-popover span.speaker').length == 0
-      $('span.user-popover')
-        .append '<span class="speaker">🔊</span>'
+      $('td:nth-child(4) span.user-popover')
+        .prepend '<span class="speaker">🔊</span>'
 
     @userPopupsDestroy()
 

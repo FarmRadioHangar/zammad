@@ -83,6 +83,7 @@
 
                         this.wavesurfer.load(attachmentUrl);
                         this.wavesurfer.on('ready', () => this.loading = false)
+                        this.wavesurfer.on('finish', () => this.isPlaying = false)
                       })
                     },
                     methods: {

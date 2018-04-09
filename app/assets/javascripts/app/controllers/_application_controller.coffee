@@ -425,6 +425,11 @@ class App.Controller extends Spine.Controller
                 $('.counter').text( formatTime(wavesurfer.getCurrentTime()) )
               )
 
+              wavesurfer.on('finish', =>
+                isPlaying = false
+                playBtn.value = 'Play'
+              )
+
               playBtn.onclick = =>
                 wavesurfer.playPause()
                 isPlaying = !isPlaying

@@ -1,0 +1,20 @@
+#!/bin/bash
+export RAILS_ENV=production
+git --work-tree=/opt/zammad --git-dir=/home/ubuntu/zammad.git checkout -f
+cd /opt/zammad
+/home/ubuntu/.rvm/gems/ruby-2.4.4/wrappers/bundle install --without test development mysql
+
+# Enable memcached
+sed -i -e "s/.*config.cache_store.*file_store.*cache_file_store.*/    config.cache_store = :dalli_store, '127.0.0.1:11211'\n    config.session_store = :dalli_store, '127.0.0.1:11211'/" config/application.rb
+
+
+/home/ubuntu/.rvm/gems/ruby-2.4.4/wrappers/rake db:migrate
+/home/ubuntu/.rvm/gems/ruby-2.4.4/wrappers/rake assets:clean
+/home/ubuntu/.rvm/gems/ruby-2.4.4/wrappers/rake assets:precompile
+
+# delete assets precompile cache
+rm -r tmp/cache
+
+# create es searchindex
+/home/ubuntu/.rvm/gems/ruby-2.4.4/wrappers/bundle exec rails r "Setting.set('es_url', 'http://localhost:9200')"
+/home/ubuntu/.rvm/gems/ruby-2.4.4/wrappers/bundle exec rake searchindex:rebuild

@@ -116,7 +116,7 @@ class UsersController < ApplicationController
 
     # check if it's first user, the admin user
     # inital admin account
-    count = User.all.count()
+    count = User.all.count
     admin_account_exists = true
     if count <= 2
       admin_account_exists = false
@@ -156,7 +156,7 @@ class UsersController < ApplicationController
         Role.where(name: %w[Admin Agent]).each do |role|
           role_ids.push role.id
         end
-        Group.all().each do |group|
+        Group.all.each do |group|
           group_ids.push group.id
         end
 
@@ -207,6 +207,7 @@ class UsersController < ApplicationController
 
     # send inviteation if needed / only if session exists
     if params[:invite].present? && current_user
+      sleep 5 if ENV['REMOTE_URL'].present?
       token = Token.create(action: 'PasswordReset', user_id: user.id)
       NotificationFactory::Mailer.notification(
         template: 'user_invite',
@@ -261,8 +262,6 @@ class UsersController < ApplicationController
   # @response_message 200 [User] Updated User record.
   # @response_message 401        Invalid session.
   def update
-    check_attributes_by_current_user_permission(params)
-
     user = User.find(params[:id])
     access!(user, 'change')
 
@@ -273,19 +272,11 @@ class UsersController < ApplicationController
       clean_params = User.param_cleanup(clean_params, true)
       user.update!(clean_params)
 
-      # only allow Admin's
-      if current_user.permissions?('admin.user') && (params[:role_ids] || params[:roles])
-        user.associations_from_param(role_ids: params[:role_ids], roles: params[:roles])
-      end
+      # presence and permissions were checked via `check_attributes_by_current_user_permission`
+      privileged_attributes = params.slice(:role_ids, :roles, :group_ids, :groups, :organization_ids, :organizations)
 
-      # only allow Admin's
-      if current_user.permissions?('admin.user') && (params[:group_ids] || params[:groups])
-        user.associations_from_param(group_ids: params[:group_ids], groups: params[:groups])
-      end
-
-      # only allow Admin's and Agent's
-      if current_user.permissions?(['admin.user', 'ticket.agent']) && (params[:organization_ids] || params[:organizations])
-        user.associations_from_param(organization_ids: params[:organization_ids], organizations: params[:organizations])
+      if privileged_attributes.present?
+        user.associations_from_param(privileged_attributes)
       end
     end
 
@@ -382,23 +373,40 @@ class UsersController < ApplicationController
       return
     end
 
-    # set limit for pagination if needed
-    if params[:page] && params[:per_page]
-      params[:limit] = params[:page].to_i * params[:per_page].to_i
+    per_page = params[:per_page] || params[:limit] || 100
+    per_page = per_page.to_i
+    if per_page > 500
+      per_page = 500
     end
-
-    if params[:limit] && params[:limit].to_i > 500
-      params[:limit] = 500
-    end
+    page = params[:page] || 1
+    page = page.to_i
+    offset = (page - 1) * per_page
 
     query = params[:query]
     if query.respond_to?(:permit!)
       query = query.permit!.to_h
     end
 
+    # build result list
+    tickets = Ticket.search(
+      query: query,
+      condition: params[:condition].to_h,
+      limit: per_page,
+      offset: offset,
+      current_user: current_user,
+    )
+
+    query = params[:query] || params[:term]
+    if query.respond_to?(:permit!)
+      query = query.permit!.to_h
+    end
+
     query_params = {
       query: query,
-      limit: params[:limit],
+      limit: per_page,
+      offset: offset,
+      sort_by: params[:sort_by],
+      order_by: params[:order_by],
       current_user: current_user,
     }
     %i[role_ids permissions].each do |key|
@@ -425,14 +433,18 @@ class UsersController < ApplicationController
     end
 
     # build result list
-    if params[:label]
+    if params[:label] || params[:term]
       users = []
       user_all.each do |user|
-        realname = user.firstname.to_s + ' ' + user.lastname.to_s
-        if user.email && user.email.to_s != ''
-          realname = realname + ' <' + user.email.to_s + '>'
+        realname = user.fullname
+        if user.email.present? && realname != user.email
+          realname = "#{realname} <#{user.email}>"
         end
-        a = { id: user.id, label: realname, value: realname }
+        a = if params[:term]
+              { id: user.id, label: realname, value: user.email }
+            else
+              { id: user.id, label: realname, value: realname }
+            end
         users.push a
       end
 
@@ -462,67 +474,6 @@ class UsersController < ApplicationController
       list.push user.attributes_with_association_ids
     end
     render json: list, status: :ok
-  end
-
-  # @path       [GET] /users/recent
-  #
-  # @tag Search
-  # @tag User
-  #
-  # @summary          Recent creates Users.
-  # @notes            Recent creates Users.
-  #
-  # @parameter        limit           [Integer]       The limit of search results.
-  # @parameter        role_ids(multi) [Array<String>] A list of Role identifiers to which the Users have to be allocated to.
-  # @parameter        full            [Boolean]       Defines if the result should be
-  #                                                   true: { user_ids => [1,2,...], assets => {...} }
-  #                                                   or false: [{:id => user.id, :label => "firstname lastname <email>", :value => "firstname lastname <email>"},...].
-  #
-  # @response_message 200 [Array<User>] A list of User records matching the search term.
-  # @response_message 401               Invalid session.
-  def recent
-
-    if !current_user.permissions?('admin.user')
-      response_access_deny
-      return
-    end
-
-    # do query
-    user_all = if params[:role_ids].present?
-                 User.joins(:roles).where('roles.id' => params[:role_ids]).where('users.id != 1').order('users.created_at DESC').limit(params[:limit] || 20)
-               else
-                 User.where('id != 1').order('created_at DESC').limit(params[:limit] || 20)
-               end
-
-    # build result list
-    if !response_full?
-      users = []
-      user_all.each do |user|
-        realname = user.firstname.to_s + ' ' + user.lastname.to_s
-        if user.email && user.email.to_s != ''
-          realname = realname + ' <' + user.email.to_s + '>'
-        end
-        a = { id: user.id, label: realname, value: realname }
-        users.push a
-      end
-
-      # return result
-      render json: users
-      return
-    end
-
-    user_ids = []
-    assets   = {}
-    user_all.each do |user|
-      assets = user.assets(assets)
-      user_ids.push user.id
-    end
-
-    # return result
-    render json: {
-      assets: assets,
-      user_ids: user_ids.uniq,
-    }
   end
 
   # @path       [GET] /users/history/{id}
@@ -1090,12 +1041,14 @@ curl http://localhost/api/v1/users/avatar -v -u #{login}:#{password} -H "Content
   # @response_message 401 Invalid session.
   def import_start
     permission_check('admin.user')
+    string = params[:data] || params[:file].read.force_encoding('utf-8')
     result = User.csv_import(
-      string: params[:file].read.force_encoding('utf-8'),
+      string: string,
       parse_params: {
-        col_sep: ';',
+        col_sep: params[:col_sep] || ',',
       },
       try: params[:try],
+      delete: params[:delete],
     )
     render json: result, status: :ok
   end
@@ -1114,5 +1067,4 @@ curl http://localhost/api/v1/users/avatar -v -u #{login}:#{password} -H "Content
     end
     true
   end
-
 end

@@ -1,6 +1,9 @@
-require File.expand_path('../boot', __FILE__)
+require File.expand_path('boot', __dir__)
 
 require 'rails/all'
+
+# DO NOT REMOVE THIS LINE - see issue #2037
+Bundler.setup
 
 # Require the gems listed in Gemfile, including any gems
 # you've limited to :test, :development, or :production.
@@ -29,12 +32,14 @@ module Zammad
       'observer::_ticket::_article::_fillup_from_email',
       'observer::_ticket::_article::_communicate_email',
       'observer::_ticket::_article::_communicate_facebook',
+      'observer::_ticket::_article::_communicate_sms',
       'observer::_ticket::_article::_communicate_twitter',
       'observer::_ticket::_article::_communicate_telegram',
       'observer::_ticket::_reset_new_state',
       'observer::_ticket::_ref_object_touch',
       'observer::_ticket::_online_notification_seen',
       'observer::_ticket::_stats_reopen',
+      'observer::_ticket::_escalation_update',
       'observer::_tag::_ticket_history',
       'observer::_user::_ref_object_touch',
       'observer::_user::_ticket_organization',
@@ -42,6 +47,8 @@ module Zammad
       'observer::_organization::_ref_object_touch',
       'observer::_sla::_ticket_rebuild_escalation',
       'observer::_transaction'
+
+    config.active_job.queue_adapter = :delayed_job
 
     # REST api path
     config.api_path = '/api/v1'

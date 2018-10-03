@@ -222,6 +222,9 @@ class TicketsController < ApplicationController
     clean_params = Ticket.association_name_to_id_convert(params)
     clean_params = Ticket.param_cleanup(clean_params, true)
 
+    # only apply preferences changes (keep not updated keys/values)
+    clean_params = ticket.param_preferences_merge(clean_params)
+
     # overwrite params
     if !current_user.permissions?('ticket.agent')
       %i[owner owner_id customer customer_id organization organization_id preferences].each do |key|
@@ -335,12 +338,12 @@ class TicketsController < ApplicationController
     end
 
     ticket_ids_recent_viewed = []
-    recent_views = RecentView.list(current_user, 8, 'Ticket').delete_if { |object| object['o_id'] == ticket.id }
+    recent_views = RecentView.list(current_user, 8, 'Ticket')
     recent_views.each do |recent_view|
-      next if recent_view['object'] != 'Ticket'
-      ticket_ids_recent_viewed.push recent_view['o_id']
-      recent_view_ticket = Ticket.find(recent_view['o_id'])
-      next if recent_view_ticket.state.state_type.name == 'merged'
+      next if recent_view.object.name != 'Ticket'
+      next if recent_view.o_id == ticket.id
+      ticket_ids_recent_viewed.push recent_view.o_id
+      recent_view_ticket = Ticket.find(recent_view.o_id)
       assets = recent_view_ticket.assets(assets)
     end
 
@@ -425,14 +428,14 @@ class TicketsController < ApplicationController
       params.require(:condition).permit!
     end
 
-    # set limit for pagination if needed
-    if params[:page] && params[:per_page]
-      params[:limit] = params[:page].to_i * params[:per_page].to_i
+    per_page = params[:per_page] || params[:limit] || 50
+    per_page = per_page.to_i
+    if per_page > 200
+      per_page = 200
     end
-
-    if params[:limit] && params[:limit].to_i > 100
-      params[:limit] = 100
-    end
+    page = params[:page] || 1
+    page = page.to_i
+    offset = (page - 1) * per_page
 
     query = params[:query]
     if query.respond_to?(:permit!)
@@ -443,15 +446,12 @@ class TicketsController < ApplicationController
     tickets = Ticket.search(
       query: query,
       condition: params[:condition].to_h,
-      limit: params[:limit],
+      limit: per_page,
+      offset: offset,
+      order_by: params[:order_by],
+      sort_by: params[:sort_by],
       current_user: current_user,
     )
-
-    # do pagination if needed
-    if params[:page] && params[:per_page]
-      offset = (params[:page].to_i - 1) * params[:per_page].to_i
-      tickets = tickets[offset, params[:per_page].to_i] || []
-    end
 
     if response_expand?
       list = []
@@ -634,10 +634,11 @@ class TicketsController < ApplicationController
     if Setting.get('import_mode') != true
       raise 'Only can import tickets if system is in import mode.'
     end
+    string = params[:data] || params[:file].read.force_encoding('utf-8')
     result = Ticket.csv_import(
-      string: params[:file].read.force_encoding('utf-8'),
+      string: string,
       parse_params: {
-        col_sep: ';',
+        col_sep: params[:col_sep] || ',',
       },
       try: params[:try],
     )

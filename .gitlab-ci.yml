@@ -32,7 +32,7 @@ pre:bundle-audit:
   script:
     - gem install bundler-audit
     - bundle-audit update
-    - bundle-audit
+    - bundle-audit --ignore CVE-2018-1000544
 
 pre:github:
   stage: pre
@@ -51,7 +51,7 @@ test:rspec:mysql:
     - rake db:create
     - rake db:migrate
     - rake db:seed
-    - rspec
+    - bundle exec rspec
     - rake db:drop
 
 test:rspec:postgresql:
@@ -64,7 +64,7 @@ test:rspec:postgresql:
     - rake db:create
     - rake db:migrate
     - rake db:seed
-    - rspec
+    - bundle exec rspec
     - rake db:drop
 
 test:unit:mysql:
@@ -82,6 +82,7 @@ test:unit:mysql:
     - ruby -I test/ test/integration/object_manager_test.rb
     - ruby -I test/ test/integration/object_manager_attributes_controller_test.rb
     - ruby -I test/ test/integration/package_test.rb
+    - ruby -I test/ test/integration/monitoring_controller_test.rb
     - rake db:drop
 
 test:unit:postgresql:
@@ -99,20 +100,10 @@ test:unit:postgresql:
     - ruby -I test/ test/integration/object_manager_test.rb
     - ruby -I test/ test/integration/object_manager_attributes_controller_test.rb
     - ruby -I test/ test/integration/package_test.rb
+    - ruby -I test/ test/integration/monitoring_controller_test.rb
     - rake db:drop
 
-test:integration:autowizard:
-  stage: test
-  tags:
-    - core
-  script:
-    - export RAILS_ENV=test
-    - rake db:create
-    - rake db:migrate
-    - ruby -I test/ test/integration/auto_wizard_test.rb
-    - rake db:drop
-
-test:integration:email_helper:
+test:integration:email_helper_deliver:
   stage: test
   tags:
     - core
@@ -121,27 +112,7 @@ test:integration:email_helper:
     - rake db:create
     - rake db:migrate
     - ruby -I test/ test/integration/email_helper_test.rb
-    - rake db:drop
-
-test:integration:email_deliver:
-  stage: test
-  tags:
-    - core
-  script:
-    - export RAILS_ENV=test
-    - rake db:create
-    - rake db:migrate
     - ruby -I test/ test/integration/email_deliver_test.rb
-    - rake db:drop
-
-test:integration:email_keep_on_server:
-  stage: test
-  tags:
-    - core
-  script:
-    - export RAILS_ENV=test
-    - rake db:create
-    - rake db:migrate
     - ruby -I test/ test/integration/email_keep_on_server_test.rb
     - rake db:drop
 
@@ -171,29 +142,7 @@ test:integration:facebook:
     - rake db:drop
   allow_failure: true
 
-test:integration:geo_ip:
-  stage: test
-  tags:
-    - core
-  script:
-    - export RAILS_ENV=test
-    - rake db:create
-    - rake db:migrate
-    - ruby -I test/ test/integration/geo_ip_test.rb
-    - rake db:drop
-
-test:integration:geo_location:
-  stage: test
-  tags:
-    - core
-  script:
-    - export RAILS_ENV=test
-    - rake db:create
-    - rake db:migrate
-    - ruby -I test/ test/integration/geo_location_test.rb
-    - rake db:drop
-
-test:integration:geo_calendar:
+test:integration:geo:
   stage: test
   tags:
     - core
@@ -202,6 +151,8 @@ test:integration:geo_calendar:
     - rake db:create
     - rake db:migrate
     - ruby -I test/ test/integration/geo_calendar_test.rb
+    - ruby -I test/ test/integration/geo_location_test.rb
+    - ruby -I test/ test/integration/geo_ip_test.rb
     - rake db:drop
 
 test:integration:user_agent:
@@ -213,19 +164,10 @@ test:integration:user_agent:
     - rake db:create
     - rake db:migrate
     - ruby -I test/ test/integration/user_agent_test.rb
-    - rake db:drop
-
-test:integration:user_agent_proxy:
-  stage: test
-  tags:
-    - core
-  script:
     - export ZAMMAD_PROXY_TEST=true
-    - export RAILS_ENV=test
-    - rake db:create
-    - rake db:migrate
     - ruby -I test/ test/integration/user_agent_test.rb
     - rake db:drop
+  allow_failure: true
 
 test:integration:user_device:
   stage: test
@@ -263,17 +205,6 @@ test:integration:clearbit:
     - rake db:drop
   allow_failure: true
 
-test:integration:sipgate:
-  stage: test
-  tags:
-    - core
-  script:
-    - export RAILS_ENV=test
-    - rake db:create
-    - rake db:migrate
-    - ruby -I test test/integration/sipgate_controller_test.rb
-    - rake db:drop
-
 test:integration:telegram:
   stage: test
   tags:
@@ -309,12 +240,13 @@ test:integration:es_mysql:
     - export ES_URL="http://localhost:9200"
     - rake db:create
     - rake db:migrate
+    - ruby -I test/ test/integration/elasticsearch_active_test.rb
     - ruby -I test/ test/integration/elasticsearch_test.rb
     - ruby -I test/ test/controllers/search_controller_test.rb
     - ruby -I test/ test/integration/report_test.rb
     - ruby -I test/ test/controllers/form_controller_test.rb
-    - ruby -I test/ test/controllers/user_controller_test.rb
-    - ruby -I test/ test/controllers/organization_controller_test.rb
+    - ruby -I test/ test/controllers/users_controller_test.rb
+    - ruby -I test/ test/controllers/organizations_controller_test.rb
     - rake db:drop
 
 test:integration:es_postgresql:
@@ -328,12 +260,13 @@ test:integration:es_postgresql:
     - export ES_URL="http://localhost:9200"
     - rake db:create
     - rake db:migrate
+    - ruby -I test/ test/integration/elasticsearch_active_test.rb
     - ruby -I test/ test/integration/elasticsearch_test.rb
     - ruby -I test/ test/controllers/search_controller_test.rb
     - ruby -I test/ test/integration/report_test.rb
     - ruby -I test/ test/controllers/form_controller_test.rb
-    - ruby -I test/ test/controllers/user_controller_test.rb
-    - ruby -I test/ test/controllers/organization_controller_test.rb
+    - ruby -I test/ test/controllers/users_controller_test.rb
+    - ruby -I test/ test/controllers/organizations_controller_test.rb
     - rake db:drop
 
 test:integration:zendesk_mysql:
@@ -347,6 +280,7 @@ test:integration:zendesk_mysql:
     - rake db:migrate
     - ruby -I test/ test/integration/zendesk_import_test.rb
     - rake db:drop
+  allow_failure: true
 
 test:integration:zendesk_postgresql:
   stage: test
@@ -359,6 +293,7 @@ test:integration:zendesk_postgresql:
     - rake db:migrate
     - ruby -I test/ test/integration/zendesk_import_test.rb
     - rake db:drop
+  allow_failure: true
 
 test:integration:otrs_6_mysql:
   stage: test
@@ -367,7 +302,7 @@ test:integration:otrs_6_mysql:
     - mysql
   script:
     - export RAILS_ENV=test
-    - export IMPORT_OTRS_ENDPOINT="http://vz1185.test.znuny.com/otrs/public.pl?Action=ZammadMigrator"
+    - export IMPORT_OTRS_ENDPOINT="https://vz1185.test.znuny.com/otrs/public.pl?Action=ZammadMigrator"
     - rake db:create
     - rake db:migrate
     - ruby -I test/ test/integration/otrs_import_test.rb
@@ -380,7 +315,7 @@ test:integration:otrs_6_postgresql:
     - postgresql
   script:
     - export RAILS_ENV=test
-    - export IMPORT_OTRS_ENDPOINT="http://vz1185.test.znuny.com/otrs/public.pl?Action=ZammadMigrator"
+    - export IMPORT_OTRS_ENDPOINT="https://vz1185.test.znuny.com/otrs/public.pl?Action=ZammadMigrator"
     - rake db:create
     - rake db:migrate
     - ruby -I test/ test/integration/otrs_import_test.rb
@@ -476,8 +411,8 @@ test:browser:integration:api_client_ruby:
     - git clone git@github.com:zammad/zammad-api-client-ruby.git || script/build/test_shutdown.sh $RAILS_ENV $BROWSER_PORT $WS_PORT 1 1
     - cd zammad-api-client-ruby
     - bundle install --jobs 8
-    - export TEST_URL=http://$IP:$BROWSER_PORT
-    - rspec || (cd .. && script/build/test_shutdown.sh $RAILS_ENV $BROWSER_PORT $WS_PORT 1 1)
+    - export TEST_URL=http://$IP:$BROWSER_PORT/
+    - bundle exec rspec || (cd .. && script/build/test_shutdown.sh $RAILS_ENV $BROWSER_PORT $WS_PORT 1 1)
     - cd .. && script/build/test_shutdown.sh $RAILS_ENV $BROWSER_PORT $WS_PORT 0 1
 
 test:browser:integration:api_client_php:
@@ -1119,4 +1054,19 @@ test:browser:integration:zendesk_chrome:
     - RAILS_ENV=test rake db:create
     - script/build/test_startup.sh $RAILS_ENV $BROWSER_PORT $WS_PORT 1
     - ruby -I test/ test/integration/zendesk_import_browser_test.rb || script/build/test_shutdown.sh $RAILS_ENV $BROWSER_PORT $WS_PORT 1 1
+    - script/build/test_shutdown.sh $RAILS_ENV $BROWSER_PORT $WS_PORT 0 1
+
+test:browser:integration:idoit_chrome:
+  stage: browser-integration
+  dependencies:
+    - browser:build
+  tags:
+    - browser
+  script:
+    - export BROWSER=chrome
+    - export BROWSER_URL=http://$IP:$BROWSER_PORT
+    - RAILS_ENV=test rake db:create
+    - cp contrib/auto_wizard_test.json auto_wizard.json
+    - script/build/test_startup.sh $RAILS_ENV $BROWSER_PORT $WS_PORT 1
+    - ruby -I test/ test/integration/idoit_browser_test.rb || script/build/test_shutdown.sh $RAILS_ENV $BROWSER_PORT $WS_PORT 1 1
     - script/build/test_shutdown.sh $RAILS_ENV $BROWSER_PORT $WS_PORT 0 1

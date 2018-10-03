@@ -5,22 +5,26 @@ class Ticket::Article < ApplicationModel
   include HasHistory
   include ChecksHtmlSanitized
   include CanCsvImport
-  include Ticket::Article::ChecksAccess
 
-  load 'ticket/article/assets.rb'
+  include Ticket::Article::ChecksAccess
   include Ticket::Article::Assets
 
-  belongs_to    :ticket
-  has_one       :ticket_time_accounting, class_name: 'Ticket::TimeAccounting', foreign_key: :ticket_article_id, dependent: :destroy
-  belongs_to    :type,        class_name: 'Ticket::Article::Type'
-  belongs_to    :sender,      class_name: 'Ticket::Article::Sender'
-  belongs_to    :created_by,  class_name: 'User'
-  belongs_to    :updated_by,  class_name: 'User'
-  belongs_to    :origin_by,   class_name: 'User'
-  store         :preferences
+  belongs_to :ticket
+  has_one    :ticket_time_accounting, class_name: 'Ticket::TimeAccounting', foreign_key: :ticket_article_id, dependent: :destroy, inverse_of: :ticket_article
+
+  # rubocop:disable Rails/InverseOf
+  belongs_to :type,       class_name: 'Ticket::Article::Type'
+  belongs_to :sender,     class_name: 'Ticket::Article::Sender'
+  belongs_to :created_by, class_name: 'User'
+  belongs_to :updated_by, class_name: 'User'
+  belongs_to :origin_by,  class_name: 'User'
+  # rubocop:enable Rails/InverseOf
+
   before_create :check_subject, :check_body, :check_message_id_md5
   before_update :check_subject, :check_body, :check_message_id_md5
   after_destroy :store_delete
+
+  store :preferences
 
   sanitized_html :body
 
@@ -234,16 +238,7 @@ returns
 
   def attributes_with_association_names
     attributes = super
-    attributes['attachments'] = []
-    attachments.each do |attachment|
-      item = {
-        id: attachment['id'],
-        filename: attachment['filename'],
-        size: attachment['size'],
-        preferences: attachment['preferences'],
-      }
-      attributes['attachments'].push item
-    end
+    add_attachments_to_attributes(attributes)
     Ticket::Article.insert_urls(attributes)
   end
 
@@ -262,16 +257,7 @@ returns
 
   def attributes_with_association_ids
     attributes = super
-    attributes['attachments'] = []
-    attachments.each do |attachment|
-      item = {
-        id: attachment['id'],
-        filename: attachment['filename'],
-        size: attachment['size'],
-        preferences: attachment['preferences'],
-      }
-      attributes['attachments'].push item
-    end
+    add_attachments_to_attributes(attributes)
     if attributes['body'] && attributes['content_type'] =~ %r{text/html}i
       attributes['body'] = HtmlSanitizer.dynamic_image_size(attributes['body'])
     end
@@ -279,6 +265,11 @@ returns
   end
 
   private
+
+  def add_attachments_to_attributes(attributes)
+    attributes['attachments'] = attachments.map(&:attributes_for_display)
+    attributes
+  end
 
   # strip not wanted chars
   def check_subject
@@ -334,10 +325,41 @@ returns
   class Sender < ApplicationModel
     include ChecksLatestChangeObserved
     validates :name, presence: true
+
+=begin
+
+Check if sender exists, but is not customer
+
+  record = Ticket::Article.first
+  Ticket::Article::Sender.not_customer?(record)
+
+=end
+
+    def self.not_customer?(record)
+      return false if !record.sender_id
+
+      sender = Ticket::Article::Sender.lookup(id: record.sender_id)
+      sender&.name != 'Customer'
+    end
   end
 
   class Type < ApplicationModel
     include ChecksLatestChangeObserved
     validates :name, presence: true
+
+=begin
+
+Check if type exists and is correct
+
+  record = Ticket::Article.first
+  Ticket::Article::Type.named?(record, 'sms')
+
+=end
+
+    def self.named?(record, string)
+      return false if !record.type_id
+      type = Ticket::Article::Type.lookup(id: record.type_id)
+      type&.name == string
+    end
   end
 end

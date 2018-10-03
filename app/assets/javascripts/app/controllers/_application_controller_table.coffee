@@ -113,6 +113,7 @@ class App.ControllerTable extends App.Controller
   radio:              false
   renderState:        undefined
   groupBy:            undefined
+  groupDirection:     undefined
 
   shownPerPage: 150
   shownPage: 0
@@ -466,6 +467,7 @@ class App.ControllerTable extends App.Controller
     if @checkbox || @radio
       columnsLength++
     groupLast = ''
+    groupLastName = ''
     tableBody = []
     objectsToShow = @objectsOfPage(@shownPage)
     for object in objectsToShow
@@ -473,16 +475,31 @@ class App.ControllerTable extends App.Controller
         position++
         if @groupBy
           groupByName = App.viewPrint(object, @groupBy, @attributesList)
-          if groupLast isnt groupByName
-            groupLast = groupByName
+          if groupLastName isnt groupByName
+            groupLastName = groupByName
             tableBody.push @renderTableGroupByRow(object, position, groupByName)
         tableBody.push @renderTableRow(object, position)
     tableBody
 
   renderTableGroupByRow: (object, position, groupByName) =>
+    ui_table_group_by_show_count = @Config.get('ui_table_group_by_show_count')
+    groupByCount = undefined
+    if ui_table_group_by_show_count is true
+      groupBy = @groupBy
+      groupLast = object[@groupBy]
+      if !groupLast
+        groupBy = "#{@groupBy}_id"
+        groupLast = object[groupBy]
+      groupByCount = 0
+      if @objects
+        for localObject in @objects
+          if localObject[groupBy] is groupLast
+            groupByCount += 1
+
     App.view('generic/table_row_group_by')(
       position:      position
       groupByName:   groupByName
+      groupByCount:  groupByCount
       columnsLength: @columnsLength
     )
 
@@ -579,14 +596,15 @@ class App.ControllerTable extends App.Controller
         callback: (id) =>
           item = @model.find(id)
           item.name = "Clone: #{item.name}"
-          new App.ControllerGenericNew
+          new App.ControllerGenericNew(
             item: item
             pageData:
-              object: item.constructor.name
+              object: item.constructor.className
             callback: =>
               @renderTableFull()
-            genericObject: item.constructor.name
+            genericObject: item.constructor.className
             container:     @container
+          )
 
     if @destroy
       @actions.push
@@ -754,6 +772,9 @@ class App.ControllerTable extends App.Controller
       for key of groupObjects
         groupsSorted.push key
       groupsSorted = groupsSorted.sort()
+      # Reverse the sorted groups depending on the groupDirection
+      if @groupDirection == 'DESC'
+        groupsSorted.reverse()
 
       # get new order
       localObjects = []

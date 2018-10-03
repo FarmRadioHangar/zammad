@@ -12,7 +12,7 @@ class ApiAuthControllerTest < ActionDispatch::IntegrationTest
     groups = Group.all
 
     UserInfo.current_user_id = 1
-    @admin = User.create_or_update(
+    @admin = User.create!(
       login: 'api-admin-auth-behalf',
       firstname: 'API',
       lastname: 'Admin',
@@ -25,7 +25,7 @@ class ApiAuthControllerTest < ActionDispatch::IntegrationTest
 
     # create customer without org
     roles = Role.where(name: 'Customer')
-    @customer = User.create_or_update(
+    @customer = User.create!(
       login: 'api-customer1-auth-behalf@example.com',
       firstname: 'API',
       lastname: 'Customer1',
@@ -91,15 +91,38 @@ class ApiAuthControllerTest < ActionDispatch::IntegrationTest
     assert_equal(Hash, result_ticket_create.class)
     assert_equal(result_ticket_create['created_by_id'], @customer.id)
 
-    get '/api/v1/activity_stream', params: {}, headers: admin_headers
+    get '/api/v1/activity_stream?full=true', params: {}, headers: admin_headers
     assert_response(200)
     result_activity_stream = JSON.parse(@response.body)
     assert_equal(Hash, result_activity_stream.class)
 
-    ticket_created = result_activity_stream['activity_stream'].find { |activity| activity['object'] == 'Ticket' && activity['o_id'] == result_ticket_create['id'] }
+    ticket_created = nil
+    result_activity_stream['record_ids'].each do |record_id|
+      activity_stream = ActivityStream.find(record_id)
+      next if activity_stream.object.name != 'Ticket'
+      next if activity_stream.o_id != result_ticket_create['id']
+      ticket_created = activity_stream
+    end
 
-    assert_equal(Hash, ticket_created.class)
-    assert_equal(ticket_created['created_by_id'], @customer.id)
+    assert(ticket_created)
+    assert_equal(ticket_created.created_by_id, @customer.id)
+
+    get '/api/v1/activity_stream', params: {}, headers: admin_headers
+    assert_response(200)
+    result_activity_stream = JSON.parse(@response.body)
+    assert_equal(Array, result_activity_stream.class)
+
+    ticket_created = nil
+    result_activity_stream.each do |record|
+      activity_stream = ActivityStream.find(record['id'])
+      next if activity_stream.object.name != 'Ticket'
+      next if activity_stream.o_id != result_ticket_create['id']
+      ticket_created = activity_stream
+    end
+
+    assert(ticket_created)
+    assert_equal(ticket_created.created_by_id, @customer.id)
+
   end
 
   test 'X-On-Behalf-Of auth - ticket create admin for customer by email' do

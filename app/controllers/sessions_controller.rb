@@ -2,7 +2,7 @@
 
 class SessionsController < ApplicationController
   prepend_before_action :authentication_check, only: %i[switch_to_user list delete]
-  skip_before_action :verify_csrf_token, only: %i[create show destroy create_omniauth create_sso]
+  skip_before_action :verify_csrf_token, only: %i[create show destroy create_omniauth failure_omniauth create_sso]
 
   # "Create" a login, aka "log the user in"
   def create
@@ -114,12 +114,13 @@ class SessionsController < ApplicationController
   # "Delete" a login, aka "log the user out"
   def destroy
 
+    reset_session
+
     # Remove the user id from the session
     @_current_user = nil
 
     # reset session
     request.env['rack.session.options'][:expire_after] = nil
-    session.clear
 
     render json: {}
   end
@@ -162,6 +163,10 @@ class SessionsController < ApplicationController
 
     # redirect to app
     redirect_to '/'
+  end
+
+  def failure_omniauth
+    raise Exceptions::UnprocessableEntity, "Message from #{params[:strategy]}: #{params[:message]}"
   end
 
   def create_sso

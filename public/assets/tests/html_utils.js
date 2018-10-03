@@ -651,6 +651,12 @@ test("htmlCleanup", function() {
   result = App.Utils.htmlCleanup(source)
   equal(result.get(0).outerHTML, should, source)
 
+  // strip out browser-inserted (broken) link (see https://github.com/zammad/zammad/issues/2019)
+  source = "<div><a href=\"https://example.com/#{config.http_type}://#{config.fqdn}/#ticket/zoom/#{ticket.id}\">test</a></div>"
+  should = "<a href=\"#{config.http_type}://#{config.fqdn}/#ticket/zoom/#{ticket.id}\">test</a>"
+  result = App.Utils.htmlCleanup(source)
+  equal(result.html(), should, source)
+
   source = "<table bgcolor=\"green\" aaa=\"1\" style=\"color: red\"><thead><tr style=\"margin-top: 10px\"><th colspan=\"2\" abc=\"a\" style=\"margin-top: 12px\">aaa</th></tr></thead><tbody><tr><td>value</td></tr></tbody></table>"
   should = "<table bgcolor=\"green\" style=\"color:red;\"><thead><tr style=\"margin-top:10px;\"><th colspan=\"2\" style=\"margin-top:12px;\">aaa</th></tr></thead><tbody><tr><td>value</td></tr></tbody></table>"
   result = App.Utils.htmlCleanup(source)
@@ -2603,9 +2609,46 @@ test('check getRecipientArticle format', function() {
   verify = App.Utils.getRecipientArticle(ticket, article, agent, article.type, email_addresses, false)
   deepEqual(verify, result)
 
-});
+  agent = {
+    login: 'login',
+    firstname: 'firstname',
+    lastname: 'lastname',
+    email: 'agent@example.com',
+  }
+  ticket = {
+    customer: agent,
+  }
+  article = {
+    message_id: 'message_id20',
+    created_by: agent,
+    type: {
+      name: 'email',
+    },
+    sender: {
+      name: 'Agent',
+    },
+    from: 'Agent <Agent@Example.com>',
+    to: 'somebodyelse@example.com, Zammad <zammad@example.com>',
+    cc: '',
+  }
+  result = {
+    to:          'agent@example.com',
+    cc:          '',
+    body:        '',
+    in_reply_to: 'message_id20',
+  }
+  email_addresses = [
+    {
+      email: 'zammad@example.com',
+    },
+    {
+      email: 'zammad2@example.com',
+    }
+  ]
+  verify = App.Utils.getRecipientArticle(ticket, article, agent, article.type, email_addresses, false)
+  deepEqual(verify, result)
 
-}
+});
 
 test("contentTypeCleanup", function() {
 
@@ -2644,3 +2687,50 @@ test("contentTypeCleanup", function() {
   result = App.Utils.contentTypeCleanup(source)
   equal(result, should, source)
 });
+
+// htmlImage2DataUrl
+test("htmlImage2DataUrl", function() {
+
+  var source = '<div>test 13</div>'
+  var should = '<div>test 13</div>'
+  var result = App.Utils.htmlImage2DataUrl(source)
+  equal(result, should, source)
+
+  source = 'some test'
+  should = 'some test'
+  result = App.Utils.htmlImage2DataUrl(source)
+  equal(result, should, source)
+
+  source = '<img src="some url">some test'
+  should = '<img src="data:,">some test'
+  result = App.Utils.htmlImage2DataUrl(source)
+  equal(result, should, source)
+
+  source = '<img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAADAAEDAREAAhEBAxEB/8QAFAABAAAAAAAAAAAAAAAAAAAACv/EABQQAQAAAAAAAAAAAAAAAAAAAAD/xAAUAQEAAAAAAAAAAAAAAAAAAAAF/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8AbgQDv//Z">some test'
+  should = '<img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAADAAEDAREAAhEBAxEB/8QAFAABAAAAAAAAAAAAAAAAAAAACv/EABQQAQAAAAAAAAAAAAAAAAAAAAD/xAAUAQEAAAAAAAAAAAAAAAAAAAAF/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8AbgQDv//Z">some test'
+  result = App.Utils.htmlImage2DataUrl(source)
+  equal(result, should, source)
+
+  source = '<img src="data:image/jpeg;base64,some_data_123">some <img src="some url">test'
+  should = '<img src="data:image/jpeg;base64,some_data_123">some <img src="data:,">test'
+  result = App.Utils.htmlImage2DataUrl(source)
+  equal(result, should, source)
+
+});
+
+source = '<img src="/assets/images/avatar-bg.png">some test'
+$('#image2text').html(source)
+var htmlImage2DataUrlTest = function() {
+
+  var result = App.Utils.htmlImage2DataUrl(source)
+  test("htmlImage2DataUrl async", function() {
+    var result = App.Utils.htmlImage2DataUrl(source)
+    ok(result.match(/some test/), source)
+    ok(!result.match(/avatar-bg.png/), source)
+    ok(result.match(/^\<img src=\"data:image\/png;base64,/), source)
+  });
+
+}
+$('#image2text img').one('load', htmlImage2DataUrlTest)
+
+}

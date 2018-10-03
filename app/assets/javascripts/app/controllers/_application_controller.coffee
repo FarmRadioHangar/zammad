@@ -138,6 +138,12 @@ class App.Controller extends Spine.Controller
       App.Event.trigger('menu:render')
     @delay(delay, 150)
 
+  closeTab: (key = @taskKey, dest) =>
+    return if !key?
+    App.TaskManager.remove(key)
+    dest ?= App.TaskManager.nextTaskUrl() || '#'
+    @navigate dest
+
   scrollTo: (x = 0, y = 0, delay = 0) ->
     a = ->
       window.scrollTo(x, y)
@@ -176,11 +182,11 @@ class App.Controller extends Spine.Controller
   formParam: (form) ->
     App.ControllerForm.params(form)
 
-  formDisable: (form) ->
-    App.ControllerForm.disable(form)
+  formDisable: (form, type) ->
+    App.ControllerForm.disable(form, type)
 
-  formEnable: (form) ->
-    App.ControllerForm.enable(form)
+  formEnable: (form, type) ->
+    App.ControllerForm.enable(form, type)
 
   formValidate: (data) ->
     App.ControllerForm.validate(data)
@@ -262,6 +268,49 @@ class App.Controller extends Spine.Controller
     # return true if session exists
     return true if @Session.get()
     false
+
+  formInput: (params) ->
+    elem = document.createElement('input')
+    elem.setAttribute('autocomplete', 'off')
+
+    if params.required
+      params['required'] = 'required'
+
+    if params.value
+      params['value'] = params.value
+
+    if !params.type
+      params['type'] = 'text'
+
+    if !params.id && params.name
+      params['id'] = "form-#{params.name}"
+
+    for own key, value of params
+      elem.setAttribute(key, value)
+
+    elem.outerHTML
+
+  formGroupWrapper: (params, e) ->
+    if _.isFunction(params)
+      e = params
+      params = {}
+
+    params['yield'] = $.trim(e())
+
+    inputSelector = 'input,select,textarea'
+
+    inputField = if $(params.yield).is(inputSelector)
+                   $(params.yield)
+                 else if $(params.yield).find(inputSelector).length > 0
+                   $(params.yield).find(inputSelector)
+
+    if inputField.length > 0
+      params['input_id'] = inputField.attr('id')
+
+      if not params['label']
+        params['label'] = inputField.attr('name')
+
+    App.view('channel/_form_group')({context: @, params: params})
 
   frontendTime: (timestamp, row = {}) ->
     if !row['subclass']
@@ -636,6 +685,10 @@ class App.Controller extends Spine.Controller
   stopPropagation: (e) ->
     e.stopPropagation()
 
+  preventDefaultAndstopPropagation: (e) ->
+    e.preventDefault()
+    e.stopPropagation()
+
   startLoading: (el) =>
     return if @initLoadingDone && !el
     @initLoadingDone = true
@@ -726,6 +779,9 @@ class App.ControllerSubContent extends App.Controller
 
     super
 
+  headerHelper: (params) ->
+    App.view('channel/_header')(context: @, params: params)
+
   show: =>
     return if !@header
     @title @header, true
@@ -749,6 +805,7 @@ class App.ControllerModal extends App.Controller
   large: false
   small: false
   head: '?'
+  autoFocusOnFirstInput: true
   container: null
   buttonClass: 'btn--success'
   centerButtons: []
@@ -762,6 +819,9 @@ class App.ControllerModal extends App.Controller
   closeOnAnyClick: false
   initalFormParams: {}
   initalFormParamsIgnore: false
+  showTrySupport: false
+  showTryMax: 10
+  showTrydelay: 1000
 
   events:
     'submit form':                        'submit'
@@ -773,6 +833,7 @@ class App.ControllerModal extends App.Controller
 
   constructor: ->
     super
+    @showTryCount = 0
 
     if @authenticateRequired
       return if !@authenticateCheckRedirect()
@@ -785,6 +846,16 @@ class App.ControllerModal extends App.Controller
     if @shown
       @render()
 
+  showDelayed: =>
+    delay = =>
+      @showTryCount += 1
+      @render()
+    @delay(delay, @showTrydelay)
+
+  modalAlreadyExists: ->
+    return true if $('.modal').length > 0
+    false
+
   content: ->
     'You need to implement a one @content()!'
 
@@ -795,7 +866,7 @@ class App.ControllerModal extends App.Controller
       content = @contentInline
     else
       content = @content()
-    modal = $(App.view('modal')
+    modal = $(App.view('modal')(
       head:              @head
       headPrefix:        @headPrefix
       message:           @message
@@ -807,7 +878,7 @@ class App.ControllerModal extends App.Controller
       buttonClass:       @buttonClass
       centerButtons:     @centerButtons
       leftButtons:       @leftButtons
-    )
+    ))
     modal.find('.modal-body').html(content)
     if !@initRenderingDone
       @initRenderingDone = true
@@ -823,6 +894,10 @@ class App.ControllerModal extends App.Controller
     @el
 
   render: =>
+    if @showTrySupport is true && @modalAlreadyExists() && @showTryCount <= @showTryMax
+      @showDelayed()
+      return
+
     @initalFormParamsIgnore = false
 
     if @buttonSubmit is true
@@ -880,7 +955,8 @@ class App.ControllerModal extends App.Controller
     @onShown(e)
 
   onShown: (e) =>
-    @$('input:not([disabled]):not([type="hidden"]):not(".btn"), textarea').first().focus()
+    if @autoFocusOnFirstInput
+      @$('input:not([disabled]):not([type="hidden"]):not(".btn"), textarea').first().focus()
     @initalFormParams = @formParams()
 
   localOnClose: (e) =>
@@ -896,7 +972,7 @@ class App.ControllerModal extends App.Controller
 
   localOnClosed: (e) =>
     @onClosed(e)
-    $('.modal').remove()
+    @el.modal('remove')
 
   onClosed: (e) ->
     # do nothing
@@ -920,6 +996,8 @@ class App.ControllerModal extends App.Controller
     @onSubmit(e)
 
 class App.SessionMessage extends App.ControllerModal
+  showTrySupport: true
+
   onCancel: (e) =>
     if @forceReload
       @windowReload(e)

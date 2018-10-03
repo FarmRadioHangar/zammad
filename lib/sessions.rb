@@ -1,6 +1,3 @@
-require 'json'
-require 'session_helper'
-
 module Sessions
 
   # get application root directory
@@ -713,7 +710,7 @@ returns
   def self.log(level, message)
     if defined?(Rails)
       if level == 'debug'
-        Rails.logger.debug message
+        Rails.logger.debug { message }
       elsif level == 'notice'
         Rails.logger.notice message
       else

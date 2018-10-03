@@ -26,8 +26,19 @@ info about used search index machine
       }
     )
     Rails.logger.info "# #{response.code}"
-    raise "Unable to process GET at #{url}\n#{response.inspect}" if !response.success?
-    response.data
+    if response.success?
+      installed_version = response.data.dig('version', 'number')
+      raise "Unable to get elasticsearch version from response: #{response.inspect}" if installed_version.blank?
+      version_supported = Gem::Version.new(installed_version) < Gem::Version.new('5.7')
+      raise "Version #{installed_version} of configured elasticsearch is not supported" if !version_supported
+      return response.data
+    end
+
+    raise humanized_error(
+      verb:     'GET',
+      url:      url,
+      response: response,
+    )
   end
 
 =begin
@@ -75,10 +86,15 @@ update processors
           Rails.logger.info "# #{response.code}"
           next if response.success?
           next if response.code.to_s == '404'
-          raise "Unable to process DELETE at #{url}\n#{response.inspect}"
+
+          raise humanized_error(
+            verb:     'DELETE',
+            url:      url,
+            response: response,
+          )
         end
         Rails.logger.info "# curl -X PUT \"#{url}\" \\"
-        Rails.logger.debug "-d '#{data.to_json}'"
+        Rails.logger.debug { "-d '#{data.to_json}'" }
         item.delete(:action)
         response = UserAgent.put(
           url,
@@ -93,7 +109,13 @@ update processors
         )
         Rails.logger.info "# #{response.code}"
         next if response.success?
-        raise "Unable to process PUT at #{url}\n#{response.inspect}"
+
+        raise humanized_error(
+          verb:     'PUT',
+          url:      url,
+          payload:  item,
+          response: response,
+        )
       end
     end
     true
@@ -141,22 +163,34 @@ create/update/delete index
     end
 
     Rails.logger.info "# curl -X PUT \"#{url}\" \\"
-    Rails.logger.debug "-d '#{data[:data].to_json}'"
+    Rails.logger.debug { "-d '#{data[:data].to_json}'" }
 
+    # note that we use a high read timeout here because
+    # otherwise the request will be retried (underhand)
+    # which leads to an "index_already_exists_exception"
+    # HTTP 400 status error
+    # see: https://github.com/ankane/the-ultimate-guide-to-ruby-timeouts/issues/8
+    # Improving the Elasticsearch config is probably the proper solution
     response = UserAgent.put(
       url,
       data[:data],
       {
         json: true,
         open_timeout: 8,
-        read_timeout: 12,
+        read_timeout: 30,
         user: Setting.get('es_user'),
         password: Setting.get('es_password'),
       }
     )
     Rails.logger.info "# #{response.code}"
     return true if response.success?
-    raise "Unable to process PUT at #{url}\n#{response.inspect}"
+
+    raise humanized_error(
+      verb:     'PUT',
+      url:      url,
+      payload:  data[:data],
+      response: response,
+    )
   end
 
 =begin
@@ -173,7 +207,7 @@ add new object to search index
     return if url.blank?
 
     Rails.logger.info "# curl -X POST \"#{url}\" \\"
-    Rails.logger.debug "-d '#{data.to_json}'"
+    Rails.logger.debug { "-d '#{data.to_json}'" }
 
     response = UserAgent.post(
       url,
@@ -188,7 +222,13 @@ add new object to search index
     )
     Rails.logger.info "# #{response.code}"
     return true if response.success?
-    raise "Unable to process POST at #{url} (size: #{data.to_json.bytesize / 1024 / 1024}M)\n#{response.inspect}"
+
+    raise humanized_error(
+      verb:     'POST',
+      url:      url,
+      payload:  data,
+      response: response,
+    )
   end
 
 =begin
@@ -219,7 +259,13 @@ remove whole data from index
     Rails.logger.info "# #{response.code}"
     return true if response.success?
     return true if response.code.to_s == '400'
-    Rails.logger.info "NOTICE: can't delete index #{url}: " + response.inspect
+
+    humanized_error = humanized_error(
+      verb:     'DELETE',
+      url:      url,
+      response: response,
+    )
+    Rails.logger.info "NOTICE: can't delete index: #{humanized_error}"
     false
   end
 
@@ -230,6 +276,8 @@ return search result
   result = SearchIndexBackend.search('search query', limit, ['User', 'Organization'])
 
   result = SearchIndexBackend.search('search query', limit, 'User')
+
+  result = SearchIndexBackend.search('search query', limit, 'User', ['updated_at'], ['desc'])
 
   result = [
     {
@@ -248,20 +296,24 @@ return search result
 
 =end
 
-  def self.search(query, limit = 10, index = nil, query_extention = {})
+  # rubocop:disable Metrics/ParameterLists
+  def self.search(query, limit = 10, index = nil, query_extention = {}, from = 0, sort_by = [], order_by = [])
+    # rubocop:enable Metrics/ParameterLists
     return [] if query.blank?
     if index.class == Array
       ids = []
       index.each do |local_index|
-        local_ids = search_by_index(query, limit, local_index, query_extention)
+        local_ids = search_by_index(query, limit, local_index, query_extention, from, sort_by, order_by )
         ids = ids.concat(local_ids)
       end
       return ids
     end
-    search_by_index(query, limit, index, query_extention)
+    search_by_index(query, limit, index, query_extention, from, sort_by, order_by)
   end
 
-  def self.search_by_index(query, limit = 10, index = nil, query_extention = {})
+  # rubocop:disable Metrics/ParameterLists
+  def self.search_by_index(query, limit = 10, index = nil, query_extention = {}, from = 0, sort_by = [], order_by = [])
+    # rubocop:enable Metrics/ParameterLists
     return [] if query.blank?
 
     url = build_url
@@ -276,41 +328,26 @@ return search result
              '/_search'
            end
     data = {}
-    data['from'] = 0
+    data['from'] = from
     data['size'] = limit
-    data['sort'] =
-      [
-        {
-          updated_at: {
-            order: 'desc'
-          }
-        },
-        '_score'
-      ]
+
+    data['sort'] = search_by_index_sort(sort_by, order_by)
 
     data['query'] = query_extention || {}
     data['query']['bool'] ||= {}
     data['query']['bool']['must'] ||= []
 
-    # add * on simple query like "somephrase23" or "attribute: somephrase23"
-    if query.present?
-      query.strip!
-      if query.match?(/^([[:alpha:],0-9]+|[[:alpha:],0-9]+\:\s+[[:alpha:],0-9]+)$/)
-        query += '*'
-      end
-    end
-
     # real search condition
     condition = {
       'query_string' => {
-        'query' => query,
+        'query' => append_wildcard_to_simple_query(query),
         'default_operator' => 'AND',
       }
     }
     data['query']['bool']['must'].push condition
 
     Rails.logger.info "# curl -X POST \"#{url}\" \\"
-    Rails.logger.debug " -d'#{data.to_json}'"
+    Rails.logger.debug { " -d'#{data.to_json}'" }
 
     response = UserAgent.get(
       url,
@@ -326,7 +363,12 @@ return search result
 
     Rails.logger.info "# #{response.code}"
     if !response.success?
-      Rails.logger.error "ERROR: POST on #{url}\n#{response.inspect}"
+      Rails.logger.error humanized_error(
+        verb:     'GET',
+        url:      url,
+        payload:  data,
+        response: response,
+      )
       return []
     end
     data = response.data
@@ -344,6 +386,45 @@ return search result
       ids.push data
     end
     ids
+  end
+
+  def self.search_by_index_sort(sort_by = [], order_by = [])
+    result = []
+
+    sort_by.each_with_index do |value, index|
+      next if value.blank?
+      next if order_by[index].blank?
+
+      if value !~ /\./ && value !~ /_(time|date|till|id|ids|at)$/
+        value += '.raw'
+      end
+      result.push(
+        value => {
+          order: order_by[index],
+        },
+      )
+    end
+
+    if result.blank?
+      result.push(
+        updated_at: {
+          order: 'desc',
+        },
+      )
+    end
+
+    # add sorting by active if active is not part of the query
+    if result.flat_map(&:keys).exclude?(:active)
+      result.unshift(
+        active: {
+          order: 'desc',
+        },
+      )
+    end
+
+    result.push('_score')
+
+    result
   end
 
 =begin
@@ -403,7 +484,7 @@ get count of tickets and tickets which match on selector
     data = selector2query(selectors, current_user, aggs_interval, limit)
 
     Rails.logger.info "# curl -X POST \"#{url}\" \\"
-    Rails.logger.debug " -d'#{data.to_json}'"
+    Rails.logger.debug { " -d'#{data.to_json}'" }
 
     response = UserAgent.get(
       url,
@@ -419,9 +500,14 @@ get count of tickets and tickets which match on selector
 
     Rails.logger.info "# #{response.code}"
     if !response.success?
-      raise "Unable to process POST at #{url}\n#{response.inspect}"
+      raise humanized_error(
+        verb:     'GET',
+        url:      url,
+        payload:  data,
+        response: response,
+      )
     end
-    Rails.logger.debug response.data.to_json
+    Rails.logger.debug { response.data.to_json }
 
     if aggs_interval.blank? || aggs_interval[:interval].blank?
       ticket_ids = []
@@ -439,25 +525,89 @@ get count of tickets and tickets which match on selector
   def self.selector2query(selector, _current_user, aggs_interval, limit)
     query_must = []
     query_must_not = []
+    relative_map = {
+      day: 'd',
+      year: 'y',
+      month: 'M',
+      hour: 'h',
+      minute: 'm',
+    }
     if selector.present?
       selector.each do |key, data|
         key_tmp = key.sub(/^.+?\./, '')
         t = {}
-        if data['value'].class == Array
-          t[:terms] = {}
-          t[:terms][key_tmp] = data['value']
-        else
-          t[:term] = {}
-          t[:term][key_tmp] = data['value']
-        end
-        if data['operator'] == 'is'
+
+        # is/is not/contains/contains not
+        if data['operator'] == 'is' || data['operator'] == 'is not' || data['operator'] == 'contains' || data['operator'] == 'contains not'
+          if data['value'].class == Array
+            t[:terms] = {}
+            t[:terms][key_tmp] = data['value']
+          else
+            t[:term] = {}
+            t[:term][key_tmp] = data['value']
+          end
+          if data['operator'] == 'is' || data['operator'] == 'contains'
+            query_must.push t
+          elsif data['operator'] == 'is not' || data['operator'] == 'contains not'
+            query_must_not.push t
+          end
+        elsif data['operator'] == 'contains all' || data['operator'] == 'contains one' || data['operator'] == 'contains all not' || data['operator'] == 'contains one not'
+          values = data['value'].split(',').map(&:strip)
+          t[:query_string] = {}
+          if data['operator'] == 'contains all'
+            t[:query_string][:query] = "#{key_tmp}:\"#{values.join('" AND "')}\""
+            query_must.push t
+          elsif data['operator'] == 'contains one not'
+            t[:query_string][:query] = "#{key_tmp}:\"#{values.join('" OR "')}\""
+            query_must_not.push t
+          elsif data['operator'] == 'contains one'
+            t[:query_string][:query] = "#{key_tmp}:\"#{values.join('" OR "')}\""
+            query_must.push t
+          elsif data['operator'] == 'contains all not'
+            t[:query_string][:query] = "#{key_tmp}:\"#{values.join('" AND "')}\""
+            query_must_not.push t
+          end
+
+        # within last/within next (relative)
+        elsif data['operator'] == 'within last (relative)' || data['operator'] == 'within next (relative)'
+          range = relative_map[data['range'].to_sym]
+          if range.blank?
+            raise "Invalid relative_map for range '#{data['range']}'."
+          end
+          t[:range] = {}
+          t[:range][key_tmp] = {}
+          if data['operator'] == 'within last (relative)'
+            t[:range][key_tmp][:gte] = "now-#{data['value']}#{range}"
+          else
+            t[:range][key_tmp][:lt] = "now+#{data['value']}#{range}"
+          end
           query_must.push t
-        elsif data['operator'] == 'is not'
-          query_must_not.push t
-        elsif data['operator'] == 'contains'
+
+        # before/after (relative)
+        elsif data['operator'] == 'before (relative)' || data['operator'] == 'after (relative)'
+          range = relative_map[data['range'].to_sym]
+          if range.blank?
+            raise "Invalid relative_map for range '#{data['range']}'."
+          end
+          t[:range] = {}
+          t[:range][key_tmp] = {}
+          if data['operator'] == 'before (relative)'
+            t[:range][key_tmp][:lt] = "now-#{data['value']}#{range}"
+          else
+            t[:range][key_tmp][:gt] = "now+#{data['value']}#{range}"
+          end
           query_must.push t
-        elsif data['operator'] == 'contains not'
-          query_must_not.push t
+
+        # before/after (absolute)
+        elsif data['operator'] == 'before (absolute)' || data['operator'] == 'after (absolute)'
+          t[:range] = {}
+          t[:range][key_tmp] = {}
+          if data['operator'] == 'before (absolute)'
+            t[:range][key_tmp][:lt] = (data['value']).to_s
+          else
+            t[:range][key_tmp][:gt] = (data['value']).to_s
+          end
+          query_must.push t
         else
           raise "unknown operator '#{data['operator']}' for #{key}"
         end
@@ -546,4 +696,31 @@ return true if backend is configured
     url
   end
 
+  def self.humanized_error(verb:, url:, payload: nil, response:)
+    prefix = "Unable to process #{verb} request to elasticsearch URL '#{url}'."
+    suffix = "\n\nResponse:\n#{response.inspect}\n\nPayload:\n#{payload.inspect}"
+
+    if payload.respond_to?(:to_json)
+      suffix += "\n\nPayload size: #{payload.to_json.bytesize / 1024 / 1024}M"
+    end
+
+    message = if response&.error&.match?('Connection refused')
+                "Elasticsearch is not reachable, probably because it's not running or even installed."
+              elsif url.end_with?('pipeline/zammad-attachment', 'pipeline=zammad-attachment') && response.code == 400
+                'The installed attachment plugin could not handle the request payload. Ensure that the correct attachment plugin is installed (5.6 => ingest-attachment, 2.4 - 5.5 => mapper-attachments).'
+              else
+                'Check the response and payload for detailed information: '
+              end
+
+    result = "#{prefix} #{message}#{suffix}"
+    Rails.logger.error result.first(40_000)
+    result
+  end
+
+  # add * on simple query like "somephrase23" or "attribute: somephrase23"
+  def self.append_wildcard_to_simple_query(query)
+    query.strip!
+    query += '*' if query.match?(/^([[:alnum:]._]+|[[:alnum:]]+\:\s*[[:alnum:]._]+)$/)
+    query
+  end
 end

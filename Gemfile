@@ -1,8 +1,8 @@
 source 'https://rubygems.org'
 
 # core - base
-ruby '2.4.2'
-gem 'rails', '5.1.4'
+ruby '2.4.4'
+gem 'rails', '5.1.5'
 
 # core - rails additions
 gem 'activerecord-session_store'
@@ -82,6 +82,7 @@ gem 'twitter'
 gem 'htmlentities'
 gem 'mail', '2.6.6'
 gem 'mime-types'
+gem 'rchardet', '>= 1.8.0'
 gem 'valid_email2'
 
 # feature - business hours
@@ -100,6 +101,12 @@ gem 'browser'
 gem 'icalendar'
 gem 'icalendar-recurrence'
 
+# feature - phone number formatting
+gem 'telephone_number'
+
+# feature - SMS
+gem 'twilio-ruby'
+
 # integrations
 gem 'clearbit'
 gem 'net-ldap'
@@ -115,6 +122,13 @@ gem 'viewpoint'
 # in production environments by default.
 group :development, :test do
 
+  # debugging
+  gem 'byebug'
+  gem 'pry-rails'
+  gem 'pry-remote'
+  gem 'pry-rescue'
+  gem 'pry-stack_explorer'
+
   # test frameworks
   gem 'rspec-rails'
   gem 'test-unit'
@@ -128,12 +142,12 @@ group :development, :test do
   gem 'simplecov-rcov'
 
   # UI tests w/ Selenium
-  gem 'selenium-webdriver', '2.53.4'
+  gem 'selenium-webdriver'
 
   # livereload on template changes (html, js, css)
   gem 'guard',             require: false
   gem 'guard-livereload',  require: false
-  gem 'rack-livereload'
+  gem 'rack-livereload',   require: false
   gem 'rb-fsevent',        require: false
 
   # auto symlinking
@@ -147,9 +161,6 @@ group :development, :test do
   # changelog generation
   gem 'github_changelog_generator'
 
-  # Setting ENV for testing purposes
-  gem 'figaro'
-
   # Use Factory Bot for generating random test data
   gem 'factory_bot_rails'
 
@@ -157,8 +168,11 @@ group :development, :test do
   gem 'webmock'
 end
 
-# load onw gems for development and testing purposes
-local_gemfile = File.join(File.dirname(__FILE__), 'Gemfile.local')
-if File.exist?(local_gemfile)
-  eval_gemfile local_gemfile
-end
+# Want to extend Zammad with additional gems?
+# ZAMMAD USERS: Specify them in Gemfile.local
+#               (That way, you can customize the Gemfile
+#               without having your changes overwritten during upgrades.)
+# ZAMMAD DEVS:  Consult the internal wiki
+#               (or else risk pushing unwanted changes to Gemfile.lock!)
+#               https://git.znuny.com/zammad/zammad/wikis/Tips#user-content-customizing-the-gemfile
+eval_gemfile 'Gemfile.local' if File.exist?('Gemfile.local')

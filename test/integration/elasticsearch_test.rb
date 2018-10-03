@@ -1,42 +1,17 @@
-
-require 'integration_test_helper'
-require 'rake'
+require 'test_helper'
 
 class ElasticsearchTest < ActiveSupport::TestCase
+  include SearchindexHelper
 
   setup do
 
-    # set config
-    if ENV['ES_URL'].blank?
-      raise "ERROR: Need ES_URL - hint ES_URL='http://127.0.0.1:9200'"
-    end
-    Setting.set('es_url', ENV['ES_URL'])
-    if ENV['ES_INDEX_RAND'].present?
-      ENV['ES_INDEX'] = "es_index_#{rand(999_999_999)}"
-    end
-    if ENV['ES_INDEX'].blank?
-      raise "ERROR: Need ES_INDEX - hint ES_INDEX='estest.local_zammad'"
-    end
-    Setting.set('es_index', ENV['ES_INDEX'])
+    configure_elasticsearch(required: true)
 
-    # Setting.set('es_url', 'http://127.0.0.1:9200')
-    # Setting.set('es_index', 'estest.local_zammad')
-    # Setting.set('es_user', 'elasticsearch')
-    # Setting.set('es_password', 'zammad')
-
-    # set max attachment size in mb
-    Setting.set('es_attachment_max_size_in_mb', 1)
-
-    # drop/create indexes
-    Rake::Task.clear
-    Zammad::Application.load_tasks
-    #Rake::Task["searchindex:drop"].execute
-    #Rake::Task["searchindex:create"].execute
-    Rake::Task['searchindex:rebuild'].execute
+    rebuild_searchindex
 
     groups = Group.where(name: 'Users')
     roles  = Role.where(name: 'Agent')
-    @agent = User.create_or_update(
+    @agent = User.create!(
       login: 'es-agent@example.com',
       firstname: 'E',
       lastname: 'S',
@@ -61,7 +36,7 @@ class ElasticsearchTest < ActiveSupport::TestCase
       updated_by_id: 1,
       created_by_id: 1,
     )
-    @customer1 = User.create_or_update(
+    @customer1 = User.create!(
       login: 'es-customer1@example.com',
       firstname: 'ES',
       lastname: 'Customer1',
@@ -73,8 +48,7 @@ class ElasticsearchTest < ActiveSupport::TestCase
       updated_by_id: 1,
       created_by_id: 1,
     )
-    sleep 1
-    @customer2 = User.create_or_update(
+    @customer2 = User.create!(
       login: 'es-customer2@example.com',
       firstname: 'ES',
       lastname: 'Customer2',
@@ -86,8 +60,7 @@ class ElasticsearchTest < ActiveSupport::TestCase
       updated_by_id: 1,
       created_by_id: 1,
     )
-    sleep 1
-    @customer3 = User.create_or_update(
+    @customer3 = User.create!(
       login: 'es-customer3@example.com',
       firstname: 'ES',
       lastname: 'Customer3',
@@ -98,12 +71,10 @@ class ElasticsearchTest < ActiveSupport::TestCase
       updated_by_id: 1,
       created_by_id: 1,
     )
-  end
 
-  teardown do
-    if ENV['ES_URL'].present?
-      Rake::Task['searchindex:drop'].execute
-    end
+    # execute background jobs to index created/changed objects
+    Scheduler.worker(true)
+
   end
 
   # check search attributes
@@ -171,7 +142,7 @@ class ElasticsearchTest < ActiveSupport::TestCase
     Store.add(
       object: 'Ticket::Article',
       o_id: article1.id,
-      data: IO.binread(Rails.root.join('test', 'fixtures', 'es-normal.txt')),
+      data: File.binread(Rails.root.join('test', 'data', 'elasticsearch', 'es-normal.txt')),
       filename: 'es-normal.txt',
       preferences: {},
       created_by_id: 1,
@@ -232,7 +203,7 @@ class ElasticsearchTest < ActiveSupport::TestCase
     Store.add(
       object: 'Ticket::Article',
       o_id: article1.id,
-      data: IO.binread(Rails.root.join('test', 'fixtures', 'es-normal.txt')),
+      data: File.binread(Rails.root.join('test', 'data', 'elasticsearch', 'es-normal.txt')),
       filename: 'es-normal.txt',
       preferences: {},
       created_by_id: 1,
@@ -243,7 +214,7 @@ class ElasticsearchTest < ActiveSupport::TestCase
     Store.add(
       object: 'Ticket::Article',
       o_id: article1.id,
-      data: IO.binread(Rails.root.join('test', 'fixtures', 'es-pdf1.pdf')),
+      data: File.binread(Rails.root.join('test', 'data', 'elasticsearch', 'es-pdf1.pdf')),
       filename: 'es-pdf1.pdf',
       preferences: {},
       created_by_id: 1,
@@ -254,7 +225,7 @@ class ElasticsearchTest < ActiveSupport::TestCase
     Store.add(
       object: 'Ticket::Article',
       o_id: article1.id,
-      data: IO.binread(Rails.root.join('test', 'fixtures', 'es-box1.box')),
+      data: File.binread(Rails.root.join('test', 'data', 'elasticsearch', 'es-box1.box')),
       filename: 'mail1.box',
       preferences: {},
       created_by_id: 1,
@@ -265,13 +236,13 @@ class ElasticsearchTest < ActiveSupport::TestCase
     Store.add(
       object: 'Ticket::Article',
       o_id: article1.id,
-      data: IO.binread(Rails.root.join('test', 'fixtures', 'es-too-big.txt')),
+      data: File.binread(Rails.root.join('test', 'data', 'elasticsearch', 'es-too-big.txt')),
       filename: 'es-too-big.txt',
       preferences: {},
       created_by_id: 1,
     )
     ticket1.tag_add('someTagA', 1)
-    sleep 1
+    travel 1.minute
 
     ticket2 = Ticket.create!(
       title: 'something else',
@@ -297,7 +268,7 @@ class ElasticsearchTest < ActiveSupport::TestCase
       created_by_id: 1,
     )
     ticket2.tag_add('someTagB', 1)
-    sleep 1
+    travel 1.minute
 
     ticket3 = Ticket.create!(
       title: 'something else',
@@ -324,7 +295,7 @@ class ElasticsearchTest < ActiveSupport::TestCase
 
     # execute background jobs
     Scheduler.worker(true)
-    sleep 4
+    sleep 2 # for ES to come ready/indexed
 
     # search as @agent
 
@@ -436,7 +407,7 @@ class ElasticsearchTest < ActiveSupport::TestCase
     # search for tags
     result = Ticket.search(
       current_user: @agent,
-      query: 'tag:someTagA',
+      query: 'tags:someTagA',
       limit: 15,
     )
     assert(result[0], 'record 1')
@@ -445,7 +416,7 @@ class ElasticsearchTest < ActiveSupport::TestCase
 
     result = Ticket.search(
       current_user: @agent,
-      query: 'tag:someTagB',
+      query: 'tags:someTagB',
       limit: 15,
     )
     assert(result[0], 'record 2')
@@ -462,13 +433,12 @@ class ElasticsearchTest < ActiveSupport::TestCase
 
     # execute background jobs
     Scheduler.worker(true)
-
-    sleep 4
+    sleep 2 # for ES to come ready/indexed
 
     # search for tags
     result = Ticket.search(
       current_user: @agent,
-      query: 'tag:someTagA',
+      query: 'tags:someTagA',
       limit: 15,
     )
     assert(!result[0], 'record 1')
@@ -476,7 +446,7 @@ class ElasticsearchTest < ActiveSupport::TestCase
 
     result = Ticket.search(
       current_user: @agent,
-      query: 'tag:someTagB',
+      query: 'tags:someTagB',
       limit: 15,
     )
     assert(result[0], 'record 2')
@@ -485,7 +455,7 @@ class ElasticsearchTest < ActiveSupport::TestCase
 
     result = Ticket.search(
       current_user: @agent,
-      query: 'tag:someTagC',
+      query: 'tags:someTagC',
       limit: 15,
     )
     assert(result[0], 'record 1')

@@ -1,6 +1,8 @@
 require 'rails_helper'
+require 'models/concerns/can_lookup_examples'
 
 RSpec.describe Ticket do
+  include_examples 'CanLookup'
 
   describe '#merge_to' do
 
@@ -175,7 +177,7 @@ RSpec.describe Ticket do
 
   describe '#perform_changes' do
 
-    it 'performes a ticket state change on a ticket' do
+    it 'performs a ticket state change on a ticket' do
       source_ticket = create(:ticket)
 
       changes = {
@@ -188,7 +190,7 @@ RSpec.describe Ticket do
       expect(source_ticket.state.name).to eq('closed')
     end
 
-    it 'performes a ticket deletion on a ticket' do
+    it 'performs a ticket deletion on a ticket' do
       source_ticket = create(:ticket)
 
       changes = {
@@ -201,6 +203,62 @@ RSpec.describe Ticket do
       expect(ticket_with_source_ids).to match_array([])
     end
 
+    # Regression test for https://github.com/zammad/zammad/issues/2001
+    it 'does not modify its arguments' do
+      trigger = Trigger.new(
+        perform: {
+          'notification.email' => {
+            body: "Hello \#{ticket.customer.firstname} \#{ticket.customer.lastname},",
+            recipient: %w[article_last_sender ticket_owner ticket_customer ticket_agents],
+            subject: "Autoclose (\#{ticket.title})"
+          }
+        }
+      )
+
+      expect { Ticket.first.perform_changes(trigger.perform, 'trigger', {}, 1) }
+        .to not_change { trigger.perform['notification.email'][:body] }
+        .and not_change { trigger.perform['notification.email'][:subject] }
+    end
+
+    # Regression test for https://github.com/zammad/zammad/issues/1543
+    #
+    # If a new article fires an email notification trigger,
+    # and then another article is added to the same ticket
+    # before that trigger is performed,
+    # the email template's 'article' var should refer to the originating article,
+    # not the newest one.
+    #
+    # (This occurs whenever one action fires multiple email notification triggers.)
+    it 'passes the correct article to NotificationFactory::Mailer' do
+      # required by Ticket#perform_changes for email notifications
+      Group.first.update(email_address: create(:email_address))
+
+      ticket        = Ticket.first
+      orig_article  = Ticket::Article.where(ticket_id: ticket.id).first
+      newer_article = create(:ticket_article, ticket_id: ticket.id)
+      trigger       = Trigger.new(
+        perform: {
+          'notification.email' => {
+            body: '',
+            recipient: 'ticket_customer',
+            subject: ''
+          }
+        }
+      )
+
+      allow(NotificationFactory::Mailer).to receive(:template).and_return('')
+
+      ticket.perform_changes(trigger.perform, 'trigger', { article_id: orig_article.id }, 1)
+
+      expect(NotificationFactory::Mailer)
+        .to have_received(:template)
+        .with(hash_including(objects: { ticket: ticket, article: orig_article }))
+        .at_least(:once)
+
+      expect(NotificationFactory::Mailer)
+        .not_to have_received(:template)
+        .with(hash_including(objects: { ticket: ticket, article: newer_article }))
+    end
   end
 
   describe '#selectors' do
@@ -253,6 +311,81 @@ RSpec.describe Ticket do
         end.to raise_error(ActiveRecord::StatementInvalid)
       end
 
+    end
+  end
+
+  describe '#access?' do
+
+    context 'agent' do
+
+      it 'allows owner access' do
+
+        owner  = create(:agent_user)
+        ticket = create(:ticket, owner: owner)
+
+        expect( ticket.access?(owner, 'full') ).to be(true)
+      end
+
+      it 'allows group access' do
+
+        agent  = create(:agent_user)
+        group  = create(:group)
+        ticket = create(:ticket, group: group)
+
+        agent.group_names_access_map = {
+          group.name => 'full',
+        }
+
+        expect( ticket.access?(agent, 'full') ).to be(true)
+      end
+
+      it 'prevents unauthorized access' do
+        agent  = create(:agent_user)
+        ticket = create(:ticket)
+
+        expect( ticket.access?(agent, 'read') ).to be(false)
+      end
+    end
+
+    context 'customer' do
+
+      it 'allows assigned access' do
+
+        customer = create(:customer_user)
+        ticket   = create(:ticket, customer: customer)
+
+        expect( ticket.access?(customer, 'full') ).to be(true)
+      end
+
+      context 'organization' do
+
+        it 'allows access for shared' do
+
+          organization = create(:organization)
+          assigned     = create(:customer_user, organization: organization)
+          collegue     = create(:customer_user, organization: organization)
+          ticket       = create(:ticket, customer: assigned)
+
+          expect( ticket.access?(collegue, 'full') ).to be(true)
+        end
+
+        it 'prevents unshared access' do
+
+          organization = create(:organization, shared: false)
+          assigned     = create(:customer_user, organization: organization)
+          collegue     = create(:customer_user, organization: organization)
+          ticket       = create(:ticket, customer: assigned)
+
+          expect( ticket.access?(collegue, 'full') ).to be(false)
+        end
+      end
+
+      it 'prevents unauthorized access' do
+        customer = create(:customer_user)
+        ticket   = create(:ticket)
+
+        expect( ticket.access?(customer, 'read') ).to be(false)
+      end
     end
   end
 end

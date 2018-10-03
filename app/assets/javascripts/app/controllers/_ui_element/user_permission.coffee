@@ -80,6 +80,21 @@ class App.UiElement.user_permission
       groupAccesses: App.Group.accesses()
     ) )
 
+    throttled = _.throttle( (e) ->
+      input = $(@).find('input')
+      upcoming_state = !input.prop('checked')
+      value = input.val()
+      console.log(upcoming_state)
+      console.log(value)
+
+      if value is 'full' and upcoming_state is true
+        $(@).closest('tr').find('input:not([value=full])').prop('checked', false)
+      else if value isnt 'full' and upcoming_state is true
+        $(@).closest('tr').find('input[value=full]').prop('checked', false)
+    , 300, { trailing: false })
+
+    item.on('click', '.checkbox-replacement', throttled)
+
     # if customer, remove admin and agent
     item.find('[name=role_ids]').bind('change', (e) ->
       element = $(e.currentTarget)
@@ -98,7 +113,7 @@ class App.UiElement.user_permission
             if localRole
               localElement = item.find("[name=role_ids][value=#{localRole.id}]")
               if localElement.prop('checked')
-                if !confirm(App.i18n.translateInline('Role %s is conflicting with role %s, do you to continue?', role.name, localRole.name, localRole.name))
+                if !confirm(App.i18n.translateInline('Role %s is conflicting with role %s, do you want to continue?', role.name, localRole.name, localRole.name))
                   item.find("[name=role_ids][value=#{role_id}]").prop('checked', false)
                   return
                 item.find("[name=role_ids][value=#{localRole.id}]").prop('checked', false)

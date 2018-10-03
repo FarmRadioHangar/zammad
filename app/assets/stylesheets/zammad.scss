@@ -63,6 +63,12 @@ $highlight-color: hsl(205,90%,60%);
   }
 }
 
+%clickable {
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+}
+
 html {
   height: 100%;
 }
@@ -177,8 +183,7 @@ ol, ul {
 }
 
 .u-clickable {
-  cursor: pointer;
-  user-select: none;
+  @extend %clickable;
 }
 
 .u-unselectable {
@@ -379,13 +384,11 @@ pre code.hljs {
   background: white;
   border: 1px solid rgba(0,0,0,.1);
   outline: none !important;
-  touch-action: manipulation;
-  user-select: none;
-  cursor: pointer;
   border-radius: 4px;
   text-align: center;
   white-space: nowrap;
   vertical-align: middle;
+  @extend %clickable;
 
   .icon {
     vertical-align: middle;
@@ -666,7 +669,7 @@ pre code.hljs {
       left: 0;
       top: 0;
       position: absolute;
-      cursor: pointer;
+      @extend %clickable;
     }
   }
 }
@@ -817,10 +820,10 @@ pre code.hljs {
   &.is-clickable {
     background: hsl(203,65%,55%);
     color: white;
-    cursor: pointer;
     border-color: hsl(203,65%,45%);
     box-shadow: 1px 0 hsl(203,65%,45%);
     position: relative;
+    @extend %clickable;
   }
 
   &.is-blinking {
@@ -994,8 +997,8 @@ table {
 }
 
 .table-column-head {
-  cursor: pointer;
   display: flex;
+  @extend %clickable;
 }
 
 .table-column-sortIcon {
@@ -1051,11 +1054,11 @@ th.align-right {
 }
 
 .table tr.is-inactive {
-  opacity: 0.5;
+  color: #bbb;
   text-decoration: line-through;
 
   a {
-    color: #bbb;
+    color: inherit;
   }
 }
 
@@ -1069,7 +1072,6 @@ th.align-right {
 
 .table .icon {
   vertical-align: middle;
-  fill: currentColor;
 }
 
 .table .icon-draggable {
@@ -1356,7 +1358,8 @@ label,
 .inline-label,
 .label-success,
 .label-warning,
-.label-danger {
+.label-danger,
+.fileUpload label {
   font-size: inherit;
   font-weight: inherit;
   text-align: inherit;
@@ -1382,8 +1385,7 @@ table {
 
 .label-text {
   @include bidi-style(margin-left, 3px, margin-right, 0);
-  user-select: none;
-  cursor: pointer;
+  @extend %clickable;
 }
 
 .label-success,
@@ -1633,6 +1635,15 @@ fieldset > .form-group {
   position: relative;
 }
 
+.controls--datetime {
+  position: relative;
+  display: flex;
+}
+
+.controls--date {
+  position: relative;
+}
+
 .controls-label {
   margin: 11px 10px 0;
   flex-shrink: 0;
@@ -1856,8 +1867,8 @@ input.has-error {
   & + label {
     font-size: 11px;
     color: #DBDBDB;
-    cursor: pointer;
     margin: 0;
+    @extend %clickable;
   }
 
   &:checked + label {
@@ -2228,6 +2239,10 @@ kbd {
   .help-text,
   .help-block {
     color: hsl(198,19%,72%);
+  }
+  .content-controls-align-right {
+    display: flex;
+    justify-content: flex-end;
   }
 }
 
@@ -2758,7 +2773,7 @@ ol.tabs li {
 .color-swatch {
   padding: 2px;
   margin: -2px 0 -4px;
-  cursor: pointer;
+  @extend %clickable;
 
   /* :after technique for bigger click area */
   &:after {
@@ -2979,6 +2994,11 @@ footer {
     align-items: center;
   }
 
+  .bulkAction-firstStep .has-error {
+    border-color: red !important;
+    border: 1px solid;
+  }
+
   .bulkAction-secondStep {
     display: flex;
     flex-direction: column;
@@ -3140,7 +3160,7 @@ footer {
     text-decoration: none;
     display: flex;
     align-items: center;
-    cursor: pointer;
+    @extend %clickable;
 
     &:hover {
       background: hsl(230,10%,13%);
@@ -3431,7 +3451,7 @@ footer {
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
+    @extend %clickable;
   }
 
   .search .empty-search .icon-diagonal-cross {
@@ -4521,7 +4541,7 @@ footer {
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
+    @extend %clickable;
     padding-left: 10px;
     padding-right: 27px;
     @include rtl(padding-left, 27px);
@@ -4569,6 +4589,11 @@ footer {
     position: relative;
     height: 60px;
     flex: 1 1 auto;
+    
+    &.datetime {
+      min-width: 140px;
+      overflow: visible; // datepicker popup needs to be visible
+    }
   }
 
     .form-group.is-changed {
@@ -4637,15 +4662,44 @@ footer {
     left: 0;
     top: 0;
     position: absolute;
-    padding: 28px 18px 12px;
+    padding: 28px 5px 12px 20px;
     float: none;
     display: block;
     border-radius: 0;
     background: none;
   }
 
-  .form-inline .controls--select {
-    position: static;
+  .form-inline {
+    .controls--datetime,
+    .controls--date,
+    .controls--select {
+      position: static;
+    }
+
+    .controls--datetime {
+      position: absolute;
+      bottom: 12px;
+      left: 0;
+      padding: 0 5px 0 20px;
+      width: 100%;
+      
+      .controls-label {
+        display: none;
+      }
+      
+      .form-control {
+        width: 70px;
+        line-height: inherit;
+        position: static;
+        padding: 0;
+        height: auto;
+        
+        &.time {
+          margin-left: 5px;
+          width: 38px;
+        }
+      }
+    }
   }
 
   .bulkAction-secondStep .form-group {
@@ -4679,11 +4733,6 @@ footer {
 
 .ticketZoom {
   background: #f8f9fa;
-  /*
-    force ticket zoom to show scrollbars
-    because we offset the tabs bar when the os shows scrollbars
-  */
-  min-height: 101%;
 }
 
 .ticketZoom-controls {
@@ -5404,8 +5453,7 @@ footer {
         display: none;
         white-space: nowrap;
         @include bidi-style(margin-left, auto, margin-right, 0);
-        cursor: pointer;
-        user-select: none;
+        @extend %clickable;
       }
 
       .attachment:hover .attachment--preview .attachment-delete {
@@ -5442,8 +5490,7 @@ footer {
         display: none;
         white-space: nowrap;
         @include bidi-style(margin-left, auto, margin-right, 0);
-        cursor: pointer;
-        user-select: none;
+        @extend %clickable;
       }
 
       .attachment:hover.attachment--row .attachment-delete {
@@ -5498,6 +5545,12 @@ footer {
 
 .tabsSidebar-tabsSpacer {
   @include bidi-style(padding-right, 62px !important, padding-left, 0);
+  /*
+    force div to show scrollbars
+    because we offset the sidebar tabs when the os shows scrollbars
+  */
+  overflow-x: hidden;
+  overflow-y: scroll;
 }
 
 .tabsSidebar-sidebarSpacer {
@@ -6098,6 +6151,16 @@ footer {
   display: inline-flex;
   align-items: center;
   cursor: default;
+  max-width: 100%;
+
+  &.active {
+    background: $highlight-color;
+
+    .close,
+    .token-close {
+      opacity: .5;
+    }
+  }
 }
 
   /*
@@ -6127,6 +6190,9 @@ footer {
 
   .token-label {
     padding: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .tokenfield.form-control {
@@ -6139,7 +6205,7 @@ footer {
   .token .close,
   .token-close {
     margin: 0;
-    padding: 0 9px 0 12px;
+    padding: 0 9px 0 6px;
     font-family: inherit;
     font-weight: 100;
     font-size: 28px;
@@ -6149,7 +6215,7 @@ footer {
     opacity: .3;
     outline: none;
     height: auto;
-    cursor: pointer;
+    @extend %clickable;
   }
 
   .token .close:hover,
@@ -6161,6 +6227,34 @@ footer {
 .ui-autocomplete.ui-widget-content {
   @extend .zIndex-9;
   position: absolute;
+}
+
+.ui-menu {
+  background: hsl(240,9%,19%);
+  border: none;
+  color: white;
+  font-family: inherit;
+  font-size: inherit;
+  
+  .ui-menu-item {
+    padding: 9px 15px;
+    list-style-image: none;
+    
+    &:not(:first-child) {
+      box-shadow: 0 1px rgba(255,255,255,.13) inset;
+    }
+
+    &.ui-state-focus {
+      margin: 0;
+      border: none;
+      background: hsl(205,90%,60%);
+      color: inherit;
+
+      + li {
+        box-shadow: none;
+      }
+    }
+  }
 }
 
 .drox {
@@ -6488,7 +6582,7 @@ footer {
     height: 39px;
     line-height: 39px;
     padding: 0 15px;
-    cursor: pointer;
+    @extend %clickable;
     white-space: nowrap;
 
     &:focus {
@@ -6503,12 +6597,11 @@ footer {
   .dropdown li:hover,
   .dropdown li.is-active {
     background: hsl(205,90%,60%);
-  }
 
-    .dropdown li:hover + li,
-    .dropdown li.is-active + li {
+    + li {
       box-shadow: none;
     }
+  }
 
   .dropdown-menu > li.danger:hover,
   .dropdown-menu > li.danger.is-active {
@@ -6581,6 +6674,10 @@ footer {
       flex: 1;
       padding: 0 18px;
     }
+
+    .icon {
+      fill: currentColor;
+    }
   }
 
   .dropdown.dropdown--wide {
@@ -6644,9 +6741,9 @@ footer {
 }
 
 .recipientList-entry {
-  @extend .u-clickable;
   display: flex;
   align-items: center;
+  @extend .u-clickable;
 }
 
   .recipientList-entry .recipientList-iconSpacer {
@@ -6655,6 +6752,7 @@ footer {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
   }
 
   .recipientList-icon {
@@ -6664,13 +6762,12 @@ footer {
     opacity: 0.2;
   }
 
-  .recipientList--new .recipientList-icon {
-    opacity: 1;
-  }
-
-  .recipientList-entry:hover .recipientList-icon,
-  .recipientList-entry.is-active .recipientList-icon {
-    opacity: 1;
+  .recipientList--new,
+  .recipientList-entry:hover,
+  .recipientList-entry.is-active {
+    .recipientList-icon {
+      opacity: 1;
+    }
   }
 
   .recipientList-name {
@@ -6678,6 +6775,16 @@ footer {
     @include bidi-style(margin-left, 10px, margin-right, 0);
     flex: 1;
     @extend .u-textTruncate;
+  }
+
+  .recipientList-status {
+    opacity: 0.5;
+    margin: 0 10px;
+    flex-shrink: 1;
+
+    &:last-child {
+      margin-right: 0;
+    }
   }
 
   .recipientList-arrow {
@@ -7274,8 +7381,12 @@ label + .wizard-buttonList {
   font-size: 118px;
   margin: 0;
   padding: 0;
-  cursor: pointer;
+  @extend %clickable;
   opacity: 0;
+  
+  &:focus + label {
+    text-decoration: underline;
+  }
 }
 
 .imagePreview img {
@@ -7652,11 +7763,10 @@ output {
   height: 100%;
   border-radius: inherit;
   outline: none;
-  cursor: pointer;
   background: white;
   box-shadow: 0 0 0 1px rgba(0,0,0,.1) inset;
-  user-select: none;
   transition: background 200ms;
+  @extend %clickable;
 
   &:after {
     content: "";
@@ -7682,6 +7792,10 @@ output {
     cursor: not-allowed;
     background: hsl(210,17%,93%);
     border-color: hsl(210,10%,85%);
+  }
+
+  &[disabled] + label:after {
+    background: hsl(210,17%,97%);
   }
 
   &:focus + label {
@@ -7722,7 +7836,7 @@ output {
   box-shadow: 0 0 0 1px hsl(198,19%,86%) inset;
   border-radius: 100%;
   background: white;
-  cursor: pointer;
+  @extend %clickable;
 
   &:hover:not(.is-disabled) {
     border-color: hsl(198,19%,83%);
@@ -8003,7 +8117,7 @@ output {
     box-shadow:
       1px 0 hsl(198,18%,86%) inset,
       0 1px hsl(198,18%,86%) inset;
-    cursor: pointer;
+    @extend %clickable;
 
     &.is-selected {
       background-color: $highlight-color;
@@ -8239,15 +8353,20 @@ output {
   min-width: 0;
   cursor: default;
 
+  &.datepicker-rtl {
+    left: auto;
+    right: 0;
+  }
+
   .datepicker-switch {
     padding: 12px 0;
     font-weight: bold;
     font-size: 15px;
     text-align: center;
-    cursor: pointer;
     letter-spacing: 0;
     line-height: 1.5;
     text-transform: none;
+    @extend %clickable;
 
     &:hover {
       background: hsl(240,10%,14%);
@@ -8264,10 +8383,10 @@ output {
 
   .next,
   .prev {
-    cursor: pointer;
     padding: 12px 9px 0;
     vertical-align: top;
     text-align: center;
+    @extend %clickable;
 
     .icon {
       margin-top: 4px;
@@ -8307,7 +8426,7 @@ output {
     font-size: 15px;
 
     &:not(.disabled) {
-      cursor: pointer;
+      @extend %clickable;
     }
 
     &.disabled,
@@ -8333,7 +8452,7 @@ output {
   .today {
     text-align: center;
     padding: 2px 0 0;
-    cursor: pointer;
+    @extend %clickable;
 
     &.hidden {
       display: none;
@@ -8524,7 +8643,7 @@ output {
 
 .chat-disconnect,
 .chat-close {
-  cursor: pointer;
+  @extend %clickable;
   padding: 10px;
 
   .btn {
@@ -8546,7 +8665,7 @@ output {
   border-top: none;
   padding: 7px 10px 6px;
   color: hsl(0,0%,60%);
-  cursor: pointer;
+  @extend %clickable;
 
   &.is-hidden {
     display: none;
@@ -8751,7 +8870,7 @@ output {
     align-items: center;
     justify-content: center;
     fill: hsl(202,8%,28%);
-    cursor: pointer;
+    @extend %clickable;
   }
 }
 
@@ -8911,8 +9030,7 @@ output {
   }
 
   .columnSelect-option {
-    cursor: pointer;
-    user-select: none;
+    @extend %clickable;
     padding: 0 5px;
     border-radius: 1px;
     overflow: hidden;
@@ -8948,7 +9066,7 @@ output {
     right: 0;
     top: 0;
     padding: 5px 7px;
-    cursor: pointer;
+    @extend %clickable;
     line-height: 1;
   }
 
@@ -9523,4 +9641,9 @@ body.fit {
 
 .popover .popover-body {
   overflow: hidden;
+}
+
+span.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }

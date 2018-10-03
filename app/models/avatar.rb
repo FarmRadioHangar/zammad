@@ -1,7 +1,7 @@
 # Copyright (C) 2012-2016 Zammad Foundation, http://zammad-foundation.org/
 
 class Avatar < ApplicationModel
-  belongs_to :object_lookup,   class_name: 'ObjectLookup'
+  belongs_to :object_lookup
 
 =begin
 
@@ -79,7 +79,7 @@ add avatar by url
     end
 
     # add initial avatar
-    add_init_avatar(object_id, data[:o_id])
+    _add_init_avatar(object_id, data[:o_id])
 
     record = {
       o_id: data[:o_id],
@@ -123,7 +123,7 @@ add avatar by url
         data[:full][:content] = content
         data[:full][:mime_type] = mime_type
 
-      elsif data[:url].to_s.match?(/^http/)
+      elsif data[:url].to_s.match?(%r{^https?://})
         url = data[:url].to_s
 
         # check if source ist already updated within last 2 minutes
@@ -168,7 +168,7 @@ add avatar by url
         data[:full][:mime_type] = mime_type
 
       # try zammad backend to find image based on email
-      elsif data[:url].to_s.match?(/@/)
+      elsif data[:url].to_s.match?(URI::MailTo::EMAIL_REGEXP)
         url = data[:url].to_s
 
         # check if source ist already updated within last 3 minutes
@@ -179,9 +179,7 @@ add avatar by url
         # fetch image
         image = Service::Image.user(url)
         return if !image
-        data[:resize] ||= {}
         data[:resize] = image
-        data[:full] ||= {}
         data[:full] = image
       end
     end
@@ -315,9 +313,11 @@ return all avatars of an user
 
   avatars = Avatar.list('User', 123)
 
+  avatars = Avatar.list('User', 123, no_init_add_as_boolean) # per default true
+
 =end
 
-  def self.list(object_name, o_id)
+  def self.list(object_name, o_id, no_init_add_as_boolean = true)
     object_id = ObjectLookup.by_name(object_name)
     avatars = Avatar.where(
       object_lookup_id: object_id,
@@ -325,7 +325,9 @@ return all avatars of an user
     ).order('initial DESC, deletable ASC, created_at ASC, id DESC')
 
     # add initial avatar
-    add_init_avatar(object_id, o_id)
+    if no_init_add_as_boolean
+      _add_init_avatar(object_id, o_id)
+    end
 
     avatar_list = []
     avatars.each do |avatar|
@@ -392,7 +394,7 @@ returns:
     end
   end
 
-  def self.add_init_avatar(object_id, o_id)
+  def self._add_init_avatar(object_id, o_id)
 
     count = Avatar.where(
       object_lookup_id: object_id,
@@ -400,7 +402,10 @@ returns:
     ).count
     return if count.positive?
 
-    Avatar.create(
+    object_name = ObjectLookup.by_id(object_id)
+    return if !object_name.constantize.exists?(id: o_id)
+
+    Avatar.create!(
       o_id: o_id,
       object_lookup_id: object_id,
       default: true,

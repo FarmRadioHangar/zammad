@@ -131,6 +131,7 @@ class EmailReply extends App.Controller
     selected = App.ClipBoard.getSelected('html')
     if selected
       selected = App.Utils.htmlCleanup(selected).html()
+      selected = App.Utils.htmlImage2DataUrl(selected)
     if !selected
       selected = App.ClipBoard.getSelected('text')
       if selected
@@ -156,6 +157,8 @@ class EmailReply extends App.Controller
 
     type = App.TicketArticleType.findByAttribute(name:'email')
 
+    articleNew.subtype = 'reply'
+
     App.Event.trigger('ui::ticket::setArticleType', {
       ticket: ticket
       type: type
@@ -173,6 +176,8 @@ class EmailReply extends App.Controller
     body = ''
     if article.content_type.match('html')
       body = App.Utils.textCleanup(article.body)
+      body = App.Utils.htmlImage2DataUrl(article.body)
+
     if article.content_type.match('plain')
       body = App.Utils.textCleanup(article.body)
       body = App.Utils.text2html(body)
@@ -184,17 +189,20 @@ class EmailReply extends App.Controller
 
     if ui.Config.get('ui_ticket_zoom_article_email_subject')
       if _.isEmpty(article.subject)
-        articleNew.subject = "FW: #{ticket.title}"
+        articleNew.subject = ticket.title
       else
-        articleNew.subject = "FW: #{article.subject}"
+        articleNew.subject = article.subject
 
     type = App.TicketArticleType.findByAttribute(name:'email')
+
+    articleNew.subtype = 'forward'
 
     App.Event.trigger('ui::ticket::setArticleType', {
       ticket: ticket
       type: type
       article: articleNew
       signaturePosition: signaturePosition
+      focus: 'to'
     })
 
     # add attachments to form
@@ -234,7 +242,15 @@ class EmailReply extends App.Controller
 
     articleTypes
 
-  @setArticleType: (type, ticket, ui, signaturePosition) ->
+  @setArticleTypePre: (type, ticket, ui, signaturePosition) ->
+
+    # remove old signature
+    if type isnt 'email'
+      ui.$('[data-name=body] [data-signature=true]').remove()
+      return
+
+  @setArticleTypePost: (type, ticket, ui, signaturePosition) ->
+    return if type isnt 'email'
 
     # detect current signature (use current group_id, if not set, use ticket.group_id)
     ticketCurrent = App.Ticket.fullLocal(ticket.id)
@@ -248,7 +264,7 @@ class EmailReply extends App.Controller
       signature = App.Signature.find(group.signature_id)
 
     # add/replace signature
-    if signature && signature.body && type is 'email'
+    if signature && signature.body
 
       # if signature has changed, remove it
       signature_id = ui.$('[data-signature=true]').data('signature-id')
@@ -269,15 +285,6 @@ class EmailReply extends App.Controller
         else
           body.append(signature)
         ui.$('[data-name=body]').replaceWith(body)
-
-    # remove old signature
-    else
-      ui.$('[data-name=body] [data-signature=true]').remove()
-
-    if type isnt 'email'
-      ui.$('[name=to]').val('')
-      ui.$('[name=cc]').val('')
-      ui.$('[name=subject]').val('')
 
   @validation: (type, params, ui) ->
     return true if type isnt 'email'

@@ -1,10 +1,9 @@
 # Copyright (C) 2012-2016 Zammad Foundation, http://zammad-foundation.org/
 
 class Channel < ApplicationModel
-  load 'channel/assets.rb'
   include Channel::Assets
 
-  belongs_to :group,  class_name: 'Group'
+  belongs_to :group
 
   store :options
   store :preferences
@@ -136,7 +135,7 @@ stream all accounts
     last_channels = []
 
     loop do
-      logger.debug 'stream controll loop'
+      logger.debug { 'stream controll loop' }
 
       current_channels = []
       channels = Channel.where('active = ? AND area LIKE ?', true, '%::Account')
@@ -284,6 +283,21 @@ send via account
       raise error
     end
     result
+  end
+
+  # load driver class and return it
+  def self.driver_instance(adapter)
+    # we need to require each channel backend individually otherwise we get a
+    # 'warning: toplevel constant Twitter referenced by Channel::Driver::Twitter' error e.g.
+    # so we have to convert the channel name to the filename via Rails String.underscore
+    # http://stem.ps/rails/2015/01/25/ruby-gotcha-toplevel-constant-referenced-by.html
+    require "channel/driver/#{adapter.to_filename}"
+
+    "Channel::Driver::#{adapter.to_classname}".safe_constantize
+  end
+
+  def driver_instance
+    self.class.driver_instance(options[:adapter])
   end
 
   private

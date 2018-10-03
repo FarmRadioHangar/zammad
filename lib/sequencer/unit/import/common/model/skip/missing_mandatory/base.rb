@@ -1,4 +1,4 @@
-require 'sequencer/unit/common/mixin/dynamic_attribute'
+require_dependency 'sequencer/unit/common/mixin/dynamic_attribute'
 
 class Sequencer
   class Unit
@@ -17,7 +17,7 @@ class Sequencer
 
                 def process
                   return if !skip?
-                  logger.debug("Skipping. Missing mandatory attributes for #{attribute}: #{attribute_value.inspect}")
+                  logger.debug { "Skipping. Missing mandatory attributes for #{attribute}: #{attribute_value.inspect}" }
                   state.provide(:action, :skipped)
                 end
 

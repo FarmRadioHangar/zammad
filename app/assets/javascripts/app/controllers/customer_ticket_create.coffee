@@ -21,6 +21,12 @@ class Index extends App.ControllerContent
     @bindId = App.TicketCreateCollection.one(load)
 
   render: (template = {}) ->
+    if !@Config.get('customer_ticket_create')
+      @renderScreenError(
+        detail:     'Your role cannot create new ticket. Please contact your administrator.'
+        objectName: 'Ticket'
+      )
+      return
 
     # set defaults
     defaults = template['options'] || {}
@@ -54,6 +60,9 @@ class Index extends App.ControllerContent
       form_id:        @form_id
       model:          App.TicketArticle
       screen:         'create_top'
+      events:
+        'fileUploadStart .richtext': => @submitDisable()
+        'fileUploadStop .richtext': => @submitEnable()
       filter:         @formMeta.filter
       formMeta:       @formMeta
       params:         defaults
@@ -171,7 +180,7 @@ class Index extends App.ControllerContent
     else
 
       # disable form
-      @formDisable(e)
+      @submitDisable(e)
       ui = @
       ticket.save(
         done: ->
@@ -181,7 +190,7 @@ class Index extends App.ControllerContent
 
         fail: (settings, details) ->
           ui.log 'errors', details
-          ui.formEnable(e)
+          ui.submitEnable(e)
           ui.notify(
             type:    'error'
             msg:     App.i18n.translateContent(details.error_human || details.error || 'Unable to create object!')
@@ -189,5 +198,17 @@ class Index extends App.ControllerContent
           )
       )
 
+  submitDisable: (e) =>
+    if e
+      @formDisable(e)
+      return
+    @formDisable(@$('.js-submit'), 'button')
+
+  submitEnable: (e) =>
+    if e
+      @formEnable(e)
+      return
+    @formEnable(@$('.js-submit'), 'button')
+
 App.Config.set('customer_ticket_new', Index, 'Routes')
-App.Config.set('CustomerTicketNew', { prio: 8003, parent: '#new', name: 'New Ticket', translate: true, target: '#customer_ticket_new', permission: ['ticket.customer'], divider: true }, 'NavBarRight')
+App.Config.set('CustomerTicketNew', { prio: 8003, parent: '#new', name: 'New Ticket', translate: true, target: '#customer_ticket_new', permission: ['ticket.customer'], setting: ['customer_ticket_create'], divider: true }, 'NavBarRight')

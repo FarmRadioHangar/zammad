@@ -88,6 +88,14 @@ reload config settings
     load(true)
   end
 
+  def self.import?
+    Setting.get('import_mode') == true
+  end
+
+  def self.developer?
+    Setting.get('developer_mode') == true
+  end
+
   private
 
   # load values and cache them
@@ -137,7 +145,7 @@ reload config settings
   def reset_change_id
     @@current[name] = state_current[:value]
     change_id = rand(999_999_999).to_s
-    logger.debug "Setting.reset_change_id: set new cache, #{change_id}"
+    logger.debug { "Setting.reset_change_id: set new cache, #{change_id}" }
     Cache.write('Setting::ChangeId', change_id, { expires_in: 24.hours })
     @@lookup_at = nil # rubocop:disable Style/ClassVars
     true
@@ -163,7 +171,7 @@ reload config settings
   # convert state into hash to be able to store it as store
   def state_check
     return true if !state
-    return true if state && state.respond_to?('has_key?') && state.key?(:value)
+    return true if state.try(:key?, :value)
     self.state_current = { value: state }
     true
   end

@@ -138,7 +138,7 @@ class ChatTest < TestCase
     # init chat
     click(
       browser: customer,
-      css: '.js-chat-open',
+      css: '.zammad-chat .js-chat-open',
     )
     exists(
       browser: customer,
@@ -156,7 +156,7 @@ class ChatTest < TestCase
     )
     click(
       browser: customer,
-      css: '.js-chat-toggle',
+      css: '.zammad-chat .js-chat-toggle .zammad-chat-header-icon',
     )
     watch_for_disappear(
       browser: customer,
@@ -186,8 +186,8 @@ class ChatTest < TestCase
       browser: agent,
       css: 'a[href="#customer_chat"]',
     )
-    agent.find_elements( { css: '.active .chat-window .js-disconnect' } ).each(&:click)
-    agent.find_elements( { css: '.active .chat-window .js-close' } ).each(&:click)
+    agent.find_elements(css: '.active .chat-window .js-disconnect:not(.is-hidden)').each(&:click)
+    agent.find_elements(css: '.active .chat-window .js-close').each(&:click)
 
     customer = browser_instance
     location(
@@ -274,7 +274,7 @@ class ChatTest < TestCase
     )
     click(
       browser: customer,
-      css: '.js-chat-toggle',
+      css: '.js-chat-toggle .zammad-chat-header-icon',
     )
     watch_for(
       browser: agent,
@@ -299,8 +299,8 @@ class ChatTest < TestCase
       browser: agent,
       css: 'a[href="#customer_chat"]',
     )
-    agent.find_elements( { css: '.active .chat-window .js-disconnect' } ).each(&:click)
-    agent.find_elements( { css: '.active .chat-window .js-close' } ).each(&:click)
+    agent.find_elements(css: '.active .chat-window .js-disconnect:not(.is-hidden)').each(&:click)
+    agent.find_elements(css: '.active .chat-window .js-close').each(&:click)
 
     customer = browser_instance
     location(
@@ -383,7 +383,7 @@ class ChatTest < TestCase
     )
     click(
       browser: agent,
-      css: '.active .chat-window .js-disconnect',
+      css: '.active .chat-window .js-disconnect:not(.is-hidden)',
     )
     click(
       browser: agent,
@@ -401,18 +401,18 @@ class ChatTest < TestCase
     )
     click(
       browser: customer,
-      css: '.zammad-chat .js-chat-toggle',
+      css: '.zammad-chat .js-chat-toggle .zammad-chat-header-icon',
     )
     watch_for_disappear(
       browser: customer,
       css: '.zammad-chat-is-open',
     )
-    agent.find_elements( { css: '.active .chat-window .js-disconnect' } ).each(&:click)
-    agent.find_elements( { css: '.active .chat-window .js-close' } ).each(&:click)
+    agent.find_elements(css: '.active .chat-window .js-disconnect:not(.is-hidden)').each(&:click)
+    agent.find_elements(css: '.active .chat-window .js-close').each(&:click)
     sleep 2
     click(
       browser: customer,
-      css: '.js-chat-open',
+      css: '.zammad-chat .js-chat-open',
     )
     exists(
       browser: customer,
@@ -454,14 +454,16 @@ class ChatTest < TestCase
       browser: agent,
       css: 'a[href="#customer_chat"]',
     )
-    agent.find_elements( { css: '.active .chat-window .js-disconnect' } ).each(&:click)
-    agent.find_elements( { css: '.active .chat-window .js-close' } ).each(&:click)
+    agent.find_elements(css: '.active .chat-window .js-disconnect:not(.is-hidden)').each(&:click)
+    agent.find_elements(css: '.active .chat-window .js-close').each(&:click)
 
     # set chat preferences
     click(
       browser: agent,
       css: '.active .js-settings',
     )
+
+    modal_ready(browser: agent)
     set(
       browser: agent,
       css: '.modal [name="chat::phrase::1"]',
@@ -581,7 +583,7 @@ class ChatTest < TestCase
     )
     click(
       browser: customer,
-      css: '.js-chat-toggle',
+      css: '.zammad-chat .js-chat-toggle .zammad-chat-header-icon',
     )
     watch_for(
       browser: agent,
@@ -606,8 +608,8 @@ class ChatTest < TestCase
       browser: agent,
       css: 'a[href="#customer_chat"]',
     )
-    agent.find_elements( { css: '.active .chat-window .js-disconnect' } ).each(&:click)
-    agent.find_elements( { css: '.active .chat-window .js-close' } ).each(&:click)
+    agent.find_elements(css: '.active .chat-window .js-disconnect:not(.is-hidden)').each(&:click)
+    agent.find_elements(css: '.active .chat-window .js-close').each(&:click)
 
     exists(
       browser: agent,

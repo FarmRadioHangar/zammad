@@ -4,7 +4,6 @@ class Job < ApplicationModel
   include ChecksClientNotification
   include ChecksConditionValidation
 
-  load 'job/assets.rb'
   include Job::Assets
 
   store     :timeplan
@@ -25,8 +24,9 @@ Job.run
 
   def self.run
     start_at = Time.zone.now
-    jobs = Job.where(active: true, running: false)
+    jobs = Job.where(active: true)
     jobs.each do |job|
+      next if !job.executable?
       job.run(false, start_at)
     end
     true
@@ -47,7 +47,7 @@ job.run(true)
 =end
 
   def run(force = false, start_at = Time.zone.now)
-    logger.debug "Execute job #{inspect}"
+    logger.debug { "Execute job #{inspect}" }
 
     if !executable?(start_at) && force == false
       if next_run_at && next_run_at <= Time.zone.now
@@ -72,10 +72,11 @@ job.run(true)
     # find tickets to change
     ticket_count, tickets = Ticket.selectors(condition, 2_000)
 
-    logger.debug "Job #{name} with #{ticket_count} tickets"
+    logger.debug { "Job #{name} with #{ticket_count} tickets" }
 
     self.processed = ticket_count || 0
     self.running = true
+    self.last_run_at = Time.zone.now
     save!
 
     tickets&.each do |ticket|
@@ -94,6 +95,9 @@ job.run(true)
 
     # only execute jobs, older then 1 min, to give admin posibility to change
     return false if updated_at > Time.zone.now - 1.minute
+
+    # check if job got stuck
+    return false if running == true && last_run_at && Time.zone.now - 1.day < last_run_at
 
     # check if jobs need to be executed
     # ignore if job was running within last 10 min.

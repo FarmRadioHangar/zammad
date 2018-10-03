@@ -9,9 +9,9 @@ module Channel::Filter::IdentifySender
     if customer_user_id.present?
       customer_user = User.lookup(id: customer_user_id)
       if customer_user
-        Rails.logger.debug "Took customer form x-zammad-ticket-customer_id header '#{customer_user_id}'."
+        Rails.logger.debug { "Took customer form x-zammad-ticket-customer_id header '#{customer_user_id}'." }
       else
-        Rails.logger.debug "Invalid x-zammad-ticket-customer_id header '#{customer_user_id}', no such user - take user from 'from'-header."
+        Rails.logger.debug { "Invalid x-zammad-ticket-customer_id header '#{customer_user_id}', no such user - take user from 'from'-header." }
       end
     end
 
@@ -70,9 +70,9 @@ module Channel::Filter::IdentifySender
     if session_user_id.present?
       session_user = User.lookup(id: session_user_id)
       if session_user
-        Rails.logger.debug "Took session form x-zammad-session-user-id header '#{session_user_id}'."
+        Rails.logger.debug { "Took session form x-zammad-session-user-id header '#{session_user_id}'." }
       else
-        Rails.logger.debug "Invalid x-zammad-session-user-id header '#{session_user_id}', no such user - take user from 'from'-header."
+        Rails.logger.debug { "Invalid x-zammad-session-user-id header '#{session_user_id}', no such user - take user from 'from'-header." }
       end
     end
     if !session_user
@@ -144,13 +144,10 @@ module Channel::Filter::IdentifySender
   end
 
   def self.user_create(data, role_ids = nil)
-    if data[:email] !~ /@/
-      data[:email] += '@local'
-    end
-    user = User.find_by(email: data[:email].downcase)
-    if !user
-      user = User.find_by(login: data[:email].downcase)
-    end
+    data[:email] += '@local' if !data[:email].match?(/@/)
+    data[:email] = cleanup_email(data[:email])
+    user = User.find_by(email: data[:email]) ||
+           User.find_by(login: data[:email])
 
     # check if firstname or lastname need to be updated
     if user
@@ -195,6 +192,13 @@ module Channel::Filter::IdentifySender
     string.gsub!(/^'/, '')
     string.gsub!(/'$/, '')
     string.gsub!(/.+?\s\(.+?\)$/, '')
+    string
+  end
+
+  def self.cleanup_email(string)
+    string = string.downcase
+    string.strip!
+    string.delete!('"')
     string
   end
 

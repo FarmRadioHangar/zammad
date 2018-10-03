@@ -87,6 +87,24 @@ curl http://localhost/api/v1/monitoring/health_check?token=XXX
       actions.add(:restart_failed_jobs)
     end
 
+    # failed jobs check
+    failed_jobs       = Delayed::Job.where('attempts > 0')
+    count_failed_jobs = failed_jobs.count
+
+    if count_failed_jobs > 10
+      issues.push "#{count_failed_jobs} failing background jobs."
+    end
+
+    listed_failed_jobs = failed_jobs.select(:handler, :attempts).limit(10)
+    sorted_failed_jobs = listed_failed_jobs.group_by(&:name).sort_by { |_handler, entries| entries.length }.reverse.to_h
+    sorted_failed_jobs.each_with_index do |(name, jobs), index|
+
+      attempts = jobs.map(&:attempts).sum
+
+      issues.push "Failed to run background job ##{index += 1} '#{name}' #{jobs.count} time(s) with #{attempts} attempt(s)."
+    end
+
+    # import jobs
     import_backends = ImportJob.backends
 
     # failed import jobs
@@ -197,6 +215,18 @@ curl http://localhost/api/v1/monitoring/status?token=XXX
       status[:last_created_at][key] = last&.created_at
     end
 
+    if ActiveRecord::Base.connection_config[:adapter] == 'postgresql'
+      sql = 'SELECT SUM(CAST(coalesce(size, \'0\') AS INTEGER)) FROM stores WHERE id IN (SELECT DISTINCT(store_file_id) FROM stores)'
+      records_array = ActiveRecord::Base.connection.exec_query(sql)
+      if records_array[0] && records_array[0]['sum']
+        sum = records_array[0]['sum']
+        status[:storage] = {
+          kB: sum / 1024,
+          MB: sum / 1024 / 1024,
+          GB: sum / 1024 / 1024 / 1024,
+        }
+      end
+    end
     render json: status
   end
 

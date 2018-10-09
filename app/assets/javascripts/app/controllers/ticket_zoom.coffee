@@ -588,7 +588,13 @@ class App.TicketZoom extends App.Controller
 
     # update changes in ui
     currentStore = @currentStore()
+    console.log currentStore
     modelDiff = @formDiff(currentParams, currentStore)
+    console.log 'model diff', modelDiff.article.audio
+
+    # Ugly hack to avoid the discard issue
+    if modelDiff.article.audio == ''
+      modelDiff.article = {}
 
     # set followup state if needed
     @setDefaultFollowUpState(modelDiff, currentStore)

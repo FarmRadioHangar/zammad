@@ -1,0 +1,2 @@
+class ChannelsWebhookController < ApplicationController
+end

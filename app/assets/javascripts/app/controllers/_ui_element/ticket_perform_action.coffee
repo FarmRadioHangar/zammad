@@ -19,6 +19,7 @@ class App.UiElement.ticket_perform_action
       if !groupMeta.model || !App[groupMeta.model]
         elements["#{groupKey}.email"] = { name: 'email', display: 'Email' }
         elements["#{groupKey}.sms"] = { name: 'sms', display: 'SMS' }
+        elements["#{groupKey}.webhook"] = { name: 'webhook', display: 'Webhook' }
       else
 
         for row in App[groupMeta.model].configure_attributes

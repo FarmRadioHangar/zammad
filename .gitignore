@@ -84,3 +84,6 @@
 
 # RDoc / YARD
 /doc
+
+# Vagrant
+.vagrant

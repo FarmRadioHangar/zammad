@@ -1,0 +1,8 @@
+<div class="page-header">
+  <div class="page-header-title">
+    <h1><%- @T('Webhook') %></h1>
+  </div>
+</div>
+
+<div class="page-content">
+</div>
